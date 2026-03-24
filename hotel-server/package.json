@@ -8,6 +8,7 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.772.0",
     "cors": "^2.8.5",
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.5",
