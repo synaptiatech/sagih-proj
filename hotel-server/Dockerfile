@@ -5,10 +5,10 @@ RUN corepack enable
 
 WORKDIR /app # dif
 
-COPY hotel-servidor/package.json hotel-servidor/pnpm-lock.yaml ./
+COPY hotel-server/package.json hotel-servidor/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-COPY hotel-servidor/. .
+COPY hotel-server/. .
 
 EXPOSE 5005
 CMD ["pnpm", "run", "start"]
