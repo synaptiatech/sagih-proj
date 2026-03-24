@@ -28,20 +28,31 @@ import vendedor from './routes/vendedor.routes.js';
 
 const app = express();
 
-// MIDDLEWARE
 app.use(express.json());
 app.use(
-	cors({
-		credentials: true,
-	})
+  cors({
+    origin: true,
+    credentials: true,
+  })
 );
+
 app.use(
-	fileUpload({
-		limits: { fileSize: 50 * 1024 * 1024 },
-		tempFileDir: '/storage',
-	})
+  fileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 },
+    useTempFiles: true,
+    tempFileDir: '/tmp/',
+    createParentPath: true,
+  })
 );
+
 app.use(express.static('storage'));
+
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    message: 'Backend SAGIH funcionando',
+  });
+});
 
 app.use('/api', index);
 app.use('/api/impuesto', impuesto);
