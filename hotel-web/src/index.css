@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	--drawer-width: 230px;
+}
+
+.pattern {
+	background-color: #cbd5e1;
+	opacity: 1;
+	background-image: repeating-radial-gradient(
+			circle at 0 0,
+			transparent 0,
+			#cbd5e1 21px
+		),
+		repeating-linear-gradient(#b6bfca55, #b6bfca);
+}
+
+/* input:focus-within ~ label {
+	@apply transform scale-75 -translate-y-6 text-pink-500;
+}
+
+input:focus-within ~ label,
+input:not(:placeholder-shown) ~ label {
+	@apply transform scale-75 -translate-y-6;
+} */
+
+/* .no-scrollbar::-webkit-scrollbar {
+	display: none;
+} */

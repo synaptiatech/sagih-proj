@@ -1,0 +1,33 @@
+version: '3.1'
+
+services:
+    server:
+        image: mariadb
+        name: maria-db
+        restart: always
+        environment:
+            MARIADB_ROOT_PASSWORD: testing
+        ports:
+            - 3306:3306
+        volumes:
+            - $HOME/mariadb/data:/var/lib/mariadb
+    web:
+        image: mariadb
+        name: maria-db
+        restart: always
+        environment:
+            MARIADB_ROOT_PASSWORD: testing
+        ports:
+            - 3306:3306
+        volumes:
+            - $HOME/mariadb/data:/var/lib/mariadb
+    db:
+        image: mariadb
+        name: maria-db
+        restart: always
+        environment:
+            MARIADB_ROOT_PASSWORD: testing
+        ports:
+            - 3306:3306
+        volumes:
+            - $HOME/mariadb/data:/var/lib/mariadb

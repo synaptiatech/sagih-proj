@@ -1,0 +1,41 @@
+.root {
+	cursor: 'pointer';
+	text-align: 'center';
+	display: 'flex';
+}
+.root:hover p,
+.root:hover svg,
+.root img {
+	opacity: 0.8;
+}
+.root p,
+svg {
+	opacity: 0.4;
+}
+.root:hover img {
+	opacity: 0.3;
+}
+
+.noMouseEvent {
+	pointer-events: 'none';
+}
+
+.iconText {
+	display: 'flex';
+	justify-content: 'center';
+	flex-direction: 'column';
+	align-items: 'center';
+	position: 'absolute';
+}
+
+.hidden {
+	display: 'none';
+}
+
+.onDragOver img {
+	opacity: 0.3;
+}
+.onDragOver p,
+svg {
+	opacity: 1;
+}

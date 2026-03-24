@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "hotel-server"
+		},
+		{
+			"path": "hotel-web"
+		},
+		{
+			"path": "hotel-db"
+		}
+	],
+	"settings": {}
+}

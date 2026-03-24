@@ -1,0 +1,1 @@
+export { default as PickProveedor } from './PickProveedor';

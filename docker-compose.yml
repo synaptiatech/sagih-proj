@@ -1,0 +1,55 @@
+version: '3.7'
+services:
+    # db:
+    #     image: macochave/sagih-db:latest
+    #     restart: always
+    #     env_file:
+    #         - hotel-db/.env
+    #     networks:
+    #         testing_net:
+    #             ipv4_address: 182.18.7.5
+    #     ports:
+    #         - '5432:5432'
+    #     volumes:
+    #         - postgres:/var/lib/postgresql/data
+    api:
+        image: macochave/sagih-api:dev
+        container_name: api
+        # restart: always
+        volumes:
+            - api:/app/node_modules
+        # ports:
+        #     - '5005:5005'
+        networks:
+            testing_net:
+                ipv4_address: 182.18.7.10
+        env_file:
+            - hotel-server/.env
+        # depends_on:
+        #     - db
+    ui:
+        stdin_open: true
+        image: macochave/sagih-web:dev
+        container_name: ui
+        # restart: always
+        volumes:
+            - ui:/app/node_modules
+        ports:
+            - '80:80'
+        networks:
+            testing_net:
+                ipv4_address: 182.18.7.15
+        env_file:
+            - hotel-web/.env.production
+        depends_on:
+            - api
+volumes:
+    # postgres:
+    api:
+    ui:
+networks:
+    testing_net:
+        ipam:
+            driver: default
+            config:
+                - subnet: 182.18.7.0/24

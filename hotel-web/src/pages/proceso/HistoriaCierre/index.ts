@@ -1,0 +1,1 @@
+export { default as HistoriaCierre } from './HistoriaCierre';
