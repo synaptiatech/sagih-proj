@@ -3,12 +3,12 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-WORKDIR /app # dif
+WORKDIR /app
 
-COPY hotel-server/package.json hotel-servidor/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json ./
+RUN pnpm install
 
-COPY hotel-server/. .
+COPY . .
 
 EXPOSE 5005
 CMD ["pnpm", "run", "start"]
