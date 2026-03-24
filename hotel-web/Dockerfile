@@ -8,7 +8,7 @@ COPY . .
 
 FROM base AS prod-deps 
 #RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod 
-pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod
 
 FROM base AS build 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install 
