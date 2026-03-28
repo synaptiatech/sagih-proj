@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit-construct';
 import { getOneQueryMethod } from '../db/querys.js';
@@ -51,10 +52,12 @@ export const setupLetterhead = async (
 		table: 'empresa',
 	});
 
-	const logo = empresa.logo !== '' ? empresa.logo : 'logo.png';
+	const logo = empresa?.logo && empresa.logo.trim() !== ''
+	? empresa.logo
+	: 'logo_hotel.jpeg';
 
-	console.log(__dirname, '/../storage/', logo);
-	const imagePath = path.join(__dirname, '/../storage/', logo);
+console.log(__dirname, '/../archivos/', logo);
+const imagePath = path.join(__dirname, '/../archivos/', logo);
 
 	doc.setDocumentHeader({ height: '15%' }, () => {
 		doc.fontSize(14)
