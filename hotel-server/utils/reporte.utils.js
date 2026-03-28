@@ -31,7 +31,7 @@ export const writeHead = (name, res) => {
 	const filename = `${name}_${new Date().toLocaleDateString('es-GT')}.pdf`;
 	return res.writeHead(200, {
 		'Content-Type': 'application/pdf',
-		'Content-Disposition': `attachment; ${filename}`,
+		'Content-Disposition': `attachment; filename="${filename}"`,
 	});
 };
 
@@ -40,7 +40,7 @@ export const writeHead = (name, res) => {
  * @param {PDFDocument} doc Documento actual
  * @param {string} user Usuario que genera el reporte
  * @param {string} title Título del reporte
- * @param {Object} criterio Criterio de búsqueda
+ * @param {Object|string} criterio Criterio de búsqueda
  */
 export const setupLetterhead = async (
 	doc,
@@ -52,12 +52,14 @@ export const setupLetterhead = async (
 		table: 'empresa',
 	});
 
-	const logo = empresa?.logo && empresa.logo.trim() !== ''
-	? empresa.logo
-	: 'logo_hotel.jpeg';
+	const logo =
+		empresa?.logo && String(empresa.logo).trim() !== ''
+			? String(empresa.logo).trim()
+			: 'logo_hotel.jpeg';
 
-console.log(__dirname, '/../archivos/', logo);
-const imagePath = path.join(__dirname, '/../archivos/', logo);
+	const imagePath = path.join(__dirname, '/../archivos/', logo);
+
+	console.log('Ruta del logo:', imagePath);
 
 	doc.setDocumentHeader({ height: '15%' }, () => {
 		doc.fontSize(14)
@@ -65,38 +67,62 @@ const imagePath = path.join(__dirname, '/../archivos/', logo);
 			.text(empresa ? empresa.nombre : 'Empresa', 70, 50, {
 				align: 'center',
 			});
+
 		doc.fontSize(10)
 			.font('Helvetica')
 			.text(empresa ? empresa.direccion : 'Dirección', 70, 66, {
 				align: 'center',
 			});
+
 		doc.fontSize(10)
 			.font('Helvetica')
-			.text(empresa ? empresa.nit : 'Nit', 70, 78, { align: 'center' });
+			.text(empresa ? empresa.nit : 'Nit', 70, 78, {
+				align: 'center',
+			});
+
 		doc.fontSize(10)
 			.font('Helvetica')
-			.text(formatDate(), 70, 62, { align: 'right' });
+			.text(formatDate(), 70, 62, {
+				align: 'right',
+			});
+
 		doc.fontSize(10)
 			.font('Helvetica')
-			.text(formatTime(), 70, 74, { align: 'right' });
+			.text(formatTime(), 70, 74, {
+				align: 'right',
+			});
+
 		doc.fontSize(10)
 			.font('Helvetica')
-			.text(user ?? 'Usuario', 70, 86, { align: 'right' });
-		doc.image(imagePath, 50, 40, {
-			fit: [75, 75],
-			align: 'left',
-		});
-		doc.font('Helvetica-Bold').fontSize(14).text(title, 50, 114, {
-			align: 'left',
-		});
-		doc.font('Helvetica').fontSize(10).text(criterio, 50, 130, {
-			align: 'left',
-		});
+			.text(user ?? 'Usuario', 70, 86, {
+				align: 'right',
+			});
+
+		if (fs.existsSync(imagePath)) {
+			doc.image(imagePath, 50, 40, {
+				fit: [75, 75],
+				align: 'left',
+			});
+		} else {
+			console.error('No se encontró el logo en:', imagePath);
+		}
+
+		doc.font('Helvetica-Bold')
+			.fontSize(14)
+			.text(title, 50, 114, {
+				align: 'left',
+			});
+
+		doc.font('Helvetica')
+			.fontSize(10)
+			.text(criterio || '', 50, 130, {
+				align: 'left',
+			});
 	});
 };
 
 /**
- * @param {Object} columns Objecto con las columnas
+ * @param {Object} columns Objeto con las columnas
  */
 export const getEmptyRow = (columns) => {
 	console.log({ columns });
@@ -108,7 +134,7 @@ export const getEmptyRow = (columns) => {
 };
 
 /**
- * @param {Object[]} columns Objecto con las columnas
+ * @param {Object[]} columns Arreglo de columnas
  */
 export const getEmptyRowFromArray = (columns) => {
 	const row = {};
@@ -119,33 +145,36 @@ export const getEmptyRowFromArray = (columns) => {
 };
 
 /**
- * Configurar la numeración de páginas
- * @param {PDFDocument} doc Documento actual
+ * Calcular la sumatoria de columnas monetarias
+ * @param {Object} columns Objeto con columnas
+ * @param {Object} sumatoria Objeto con columnas a sumar
+ * @param {Object[]} rows Filas del reporte
  */
-// Agregacion de metodo para calcular la sumatoria de las columnas
 export const calcSumatoria = (columns, sumatoria, rows) => {
 	const objetoSuma = {};
 
-	Object.keys(columns).forEach((key, index) => {
+	Object.keys(columns).forEach((key) => {
 		if (key in sumatoria) {
 			objetoSuma[key] = new Intl.NumberFormat('es-GT', {
 				style: 'currency',
 				currency: 'GTQ',
 			}).format(
-				rows.reduce(
-					(prev, curr) =>
-						+prev +
-						+`${curr[key]}`
-							.replace('Q.', '')
-							.replace('Q', '')
-							.replace(',', ''),
-					0
-				)
+				rows.reduce((prev, curr) => {
+					const rawValue = `${curr?.[key] ?? ''}`;
+					const cleanValue = rawValue
+						.replace('Q.', '')
+						.replace('Q', '')
+						.replace(/,/g, '')
+						.trim();
+
+					return Number(prev) + (Number(cleanValue) || 0);
+				}, 0)
 			);
 		} else {
 			objetoSuma[key] = '    ';
 		}
 	});
+
 	const cabecera = Object.entries(columns).map(([key, label]) => {
 		return {
 			key,
@@ -158,6 +187,10 @@ export const calcSumatoria = (columns, sumatoria, rows) => {
 	return { cabecera, objetoSuma };
 };
 
+/**
+ * Configurar la numeración de páginas
+ * @param {PDFDocument} doc Documento actual
+ */
 export const setupPagesNumber = (doc) => {
 	let curPage;
 	let endPage;
@@ -172,7 +205,9 @@ export const setupPagesNumber = (doc) => {
 		doc.switchToPage(curPage);
 		doc.fontSize(10)
 			.font('Helvetica')
-			.text(`${curPage + 1} / ${count}`, 450, 50, { align: 'right' });
+			.text(`${curPage + 1} / ${count}`, 450, 50, {
+				align: 'right',
+			});
 	}
 };
 
@@ -203,9 +238,11 @@ export const getCellsAlign = (key, value = '') => {
 		key.includes('h_nombre') ||
 		key.includes('numero_personas') ||
 		key.includes('abono')
-	)
+	) {
 		return 'right';
-	else if (value.includes('Q.')) return 'right';
+	} else if (typeof value === 'string' && value.includes('Q.')) {
+		return 'right';
+	}
 	return 'left';
 };
 
@@ -243,14 +280,17 @@ export const getCustomWhere = (where) => {
 					index + 1
 				}`;
 			}
+			return null;
 		})
+		.filter(Boolean)
 		.join(' AND ');
+
 	return [str, values];
 };
 
 /**
  * Obtener los días de un mes
- * @param {string} date Fecha en formato 'YYYY-MM' a obtener los días
+ * @param {string} date Fecha en formato 'YYYY-MM'
  * @returns {number[]} Días del mes
  */
 export const getDaysInMonth = (date) => {
