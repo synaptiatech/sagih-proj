@@ -235,13 +235,16 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 		};
 
 		const getNumericValue = (currencyString) => {
-			if (!currencyString) return 0;
-			const cleaned = String(currencyString)
-				.replace(/[Q.,]/g, '')
-				.replace(/^\s+|\s+$/g, '');
-			return Number(cleaned) || 0;
-		};
+ 		  	If (currencyString === null || currencyString === undefined) return 0;
 
+  		 	const cleaned = String(currencyString)
+       			 .replace('Q.', '')
+       			 .replace('Q', '')
+     			 .replace(/,/g, '')
+        		 .trim();
+    		return Number(cleaned) || 0;
+		};
+		
 		const reportRows = tiposRows.map((r) => ({
 			nombre: r.nombre,
 			monto: formatCurrency(r.monto),
