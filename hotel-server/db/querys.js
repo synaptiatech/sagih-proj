@@ -12,7 +12,7 @@ export const getByFunction = async (funcName, params) => {
 	const values = Object.values(params);
 
 	const query = `SELECT * FROM ${funcName} (${keys.map(
-		(key, index) => `$${index + 1}`
+		(_key, index) => `$${index + 1}`
 	)})`;
 
 	const { rows } = await pool.query(query, values);
@@ -27,14 +27,17 @@ export const getByFunction = async (funcName, params) => {
 export const getOne = async (table, where) => {
 	const keys = Object.keys(where);
 	const values = Object.values(where);
+
 	const st_where =
 		keys.length > 0
 			? `WHERE ${keys
 					.map((key, index) => `${key} = $${index + 1}`)
 					.join(' AND ')}`
 			: '';
+
 	const query = `SELECT * FROM ${table} ${st_where}`;
 	console.log({ query, values });
+
 	const { rows } = await pool.query(query, values);
 	return rows.pop();
 };
@@ -42,12 +45,13 @@ export const getOne = async (table, where) => {
 /**
  *
  * @param {string} table Tabla a consultar
- * @param {{ columna: string, relacion: string, valor: any }} where Objeto con los datos a buscar
+ * @param {{ columna: string, relacion: string, valor: any }[]} where Objeto con los datos a buscar
  * @param {{ [key: string]: string }} columns Objeto con los datos a buscar
- * @returns { query: string, valores: any[] }
+ * @returns {{ query: string, values: any[] }}
  */
 export const getOneCopy = async (table, where, columns = {}) => {
 	const values = [];
+
 	const st_where =
 		where.length > 0
 			? `WHERE ${where
@@ -57,28 +61,21 @@ export const getOneCopy = async (table, where, columns = {}) => {
 								? item.valor
 								: `%${item.valor.toString().toLowerCase()}%`
 						);
+
 						if (item.columna.includes('fecha')) {
-							return `to_char(date(${
-								item.columna
-							})::date, 'YYYY/MM/DD')::date ${
-								item.relacion
-							} to_char(date($${
-								index + 1
-							})::date, 'YYYY/MM/DD')::date`;
+							return `${item.columna}::date ${item.relacion} $${index + 1}::date`;
 						}
+
 						return `${item.columna} ${item.relacion} $${index + 1}`;
-						// return `${item.columna}${
-						// 	item.columna.includes('fecha') ? '::date' : ''
-						// } ${item.relacion} $${index + 1}${
-						// 	item.columna.includes('fecha') ? '::date' : ''
-						// }`;
 					})
 					.join(' AND ')}`
 			: '';
+
 	const cols =
 		Object.keys(columns).length > 0
 			? Object.keys(columns).join(' , ')
 			: '*';
+
 	const query = `SELECT ${cols} FROM ${table} ${st_where}`;
 	return { query, values };
 };
@@ -96,6 +93,7 @@ export const getWithParmas = async (table, where, values) => {
 	const st_where = where !== '' ? `WHERE ${where}` : '';
 	const query = `SELECT * FROM ${table} ${st_where}`;
 	console.log({ query, values });
+
 	const { rows } = await pool.query(query, values);
 	return rows;
 };
@@ -106,9 +104,9 @@ export const getWithParmas = async (table, where, values) => {
  * @param {Object} where Objeto con los datos a buscar
  */
 export const getWithFilter = async (table, where) => {
-	// TODO: Agregar % al inicio y al final de la cadena de array values
 	const keys = Object.keys(where);
 	const values = Object.values(where);
+
 	const st_where =
 		keys.length > 0
 			? `WHERE ${keys
@@ -118,10 +116,13 @@ export const getWithFilter = async (table, where) => {
 					)
 					.join(' OR ')}`
 			: '';
+
 	const query = `SELECT * 
 	FROM ${table} 
 	${st_where}`;
+
 	console.log({ query, values });
+
 	const { rows } = await pool.query(query, values);
 	return rows;
 };
@@ -130,17 +131,16 @@ export const getWithFilter = async (table, where) => {
  * Obtener el offset para la consulta
  * @param {Number} pageNumber Número de página
  * @param {Number} pageSize Número de registros por página
- * @returns Offset para la consulta
+ * @returns {Number} Offset para la consulta
  */
 const getOffset = (pageNumber, pageSize) => {
-	// return pageNumber * pageSize - pageSize;
 	return (pageNumber - 1) * pageSize;
 };
 
 /**
  * Obtener el número de registros de una tabla
  * @param {String} table Nombre de la tabla
- * @returns Promesa con el número de registros de la tabla
+ * @returns {Promise<number|string>} Número de registros
  */
 const getCount = async (table) => {
 	try {
@@ -149,13 +149,6 @@ const getCount = async (table) => {
 	} catch (error) {
 		throw error;
 	}
-	// return new Promise(async (resolve, reject) => {
-	// 	try {
-	// 		resolve(rows[0].count);
-	// 	} catch (error) {
-	// 		reject(error);
-	// 	}
-	// });
 };
 
 /**
@@ -163,7 +156,7 @@ const getCount = async (table) => {
  * @param {Number} page Numero de pagina
  * @param {Number} limit Numero de registros por pagina
  * @param {Number} total Numero total de registros
- * @returns Numero de la siguiente pagina
+ * @returns {number|null} Numero de la siguiente pagina
  */
 const getNextPage = (page, limit, total) => {
 	return page * limit < total ? page + 1 : null;
@@ -172,20 +165,20 @@ const getNextPage = (page, limit, total) => {
 /**
  * Obtener el número de la pagina anterior
  * @param {Number} page Numero de pagina
- * @returns Numero de la pagina anterior
+ * @returns {number|null} Numero de la pagina anterior
  */
 const getPreviousPage = (page) => {
 	return page > 1 ? page - 1 : null;
 };
 
 /**
- * Función para realizar una consulta de tipo SELECT con paginación y ordenamiento de datos de tipo ASC o DESC y búsqueda de datos por LIKE o = segun el tipo de dato de la columna de la tabla en la base de datos de PostgreSQL y retornar un objeto con los datos de la consulta y la paginación de los datos de la consulta realizada a la base de datos de PostgreSQL
+ * Función para realizar una consulta de tipo SELECT con paginación y ordenamiento
  * @param {String} table Nombre de la tabla
  * @param {Number} numberPage Número de página
  * @param {Number} numberTuples Número de registros por página
  * @param {Object} search Objeto con los datos a buscar
- * @param {String} order Columna por la que se ordenará
- * @param {String} sort Tipo de ordenamiento
+ * @param {String} colOrder Columna por la que se ordenará
+ * @param {String} dirSort Tipo de ordenamiento
  */
 export const getWithPaginate = (
 	table,
@@ -204,21 +197,20 @@ export const getWithPaginate = (
 			const order = colOrder || 'codigo';
 			const sort = dirSort || 'ASC';
 
-			// Crear el objeto opciones
 			let options = {
 				offset,
 				limit,
 			};
 
-			// Verificar si hay una busqueda
 			if (Object.keys(search).length > 0) {
 				options.where = `WHERE ${Object.keys(search)
 					.map((key, index) => `${key} = $${index + 1}`)
 					.join(' AND ')}`;
 			}
 
-			let count = await getCount(table);
-			let query = `SELECT * 
+			const count = await getCount(table);
+
+			const query = `SELECT * 
 			FROM ${table}
 			${options.where || ''}
 			ORDER BY ${order} ${sort}
@@ -226,14 +218,15 @@ export const getWithPaginate = (
 			OFFSET ${options.offset}`;
 
 			console.log(query, Object.values(search));
-			let { rows } = await pool.query(query, Object.values(search));
 
-			let pages = limit > 0 ? Math.ceil(count / limit) : 1;
+			const { rows } = await pool.query(query, Object.values(search));
+
+			const pages = limit > 0 ? Math.ceil(count / limit) : 1;
 
 			resolve({
-				previosPage: getPreviousPage(offset),
+				previosPage: getPreviousPage(page),
 				currentPage: page,
-				nextPage: getNextPage(offset, limit, count),
+				nextPage: getNextPage(page, limit, count),
 				total: count,
 				limit,
 				pages,
@@ -249,7 +242,7 @@ export const getWithPaginate = (
 /**
  * Obtener el nombre de las columnas y el tipo de dato de una tabla
  * @param {string} table Nombre de la tabla
- * @returns {{string, string}[]} column_name, udt_name de la tabla
+ * @returns {{ column_name: string, udt_name: string }[]} Columnas de la tabla
  */
 const getColumnsNames = async (table) => {
 	const { rows } = await pool.query(
@@ -259,6 +252,7 @@ const getColumnsNames = async (table) => {
 		FROM information_schema.columns WHERE table_name = $1`,
 		[table]
 	);
+
 	return rows;
 };
 
@@ -276,7 +270,6 @@ const getWhereClause = (query) => {
 	});
 
 	const str = `${conditions.join(' AND ')} `;
-
 	return [str, values];
 };
 
@@ -302,16 +295,26 @@ const getOperatorPRel = (relacion) => {
 };
 
 /**
- * Obtener la cláusula WHERE de una consulta para buscar por operador definido por el usuario (>, <, >=, <=, =, !=) y por ILIKE (%valor%)
+ * Obtener la cláusula WHERE de una consulta para buscar por operador definido por el usuario
  * @param {Record<string, string>[]} query Arreglo de objetos con la columna, operador y valor a buscar
  * @param {number} acc Acumulado de valores
+ * @returns {[string, any[]]}
  */
 const getCustomWhereClause = (query, acc) => {
 	const values = [];
+
 	const conditions = query.map(({ column, operator, value }, index) => {
 		values.push(value);
+
+		if (column.includes('fecha')) {
+			return `${column}::date ${getOperatorPRel(operator)} $${
+				acc + index + 1
+			}::date`;
+		}
+
 		return `${column} ${getOperatorPRel(operator)} $${acc + index + 1}`;
 	});
+
 	const str = `${conditions.join(' AND ')} `;
 	return [str, values];
 };
@@ -326,33 +329,46 @@ const getCustomWhereClause = (query, acc) => {
 const getFilterWhereClause = async (table, q, acc) => {
 	const columns = await getColumnsNames(table);
 	const values = [];
+
 	const filter = columns
 		.map((column, index) => {
+			const placeholder = `$${index + acc + 1}`;
+
 			if (column.udt_name === 'text' || column.udt_name === 'varchar') {
 				values.push(`%${q}%`);
-				return `${column.column_name} ILIKE $${index + acc + 1}`;
-			} else if (column.udt_name === 'timestamp') {
-				const value = parseInt(q, 10) || 0;
-				values.push(value);
-				return `${column.column_name}::text ILIKE $${index + acc + 1}`;
-			} else {
-				const value = parseInt(q, 10) || 0;
-				values.push(value);
-				return `${column.column_name} = $${index + acc + 1}`;
+				return `${column.column_name} ILIKE ${placeholder}`;
 			}
+
+			if (
+				column.udt_name === 'timestamp' ||
+				column.udt_name === 'timestamptz' ||
+				column.udt_name === 'date'
+			) {
+				values.push(`%${q}%`);
+				return `${column.column_name}::text ILIKE ${placeholder}`;
+			}
+
+			const numericValue = Number(q);
+			if (!Number.isNaN(numericValue)) {
+				values.push(numericValue);
+				return `${column.column_name} = ${placeholder}`;
+			}
+
+			return null;
 		})
+		.filter(Boolean)
 		.join(' OR ');
+
 	return [filter, values];
 };
 
 /**
  * Obtener la clausula ORDER BY de una consulta
  * @param {Record<string, 'ASC' | 'DESC'>} sort Objeto con los datos a ordenar
- * @returns [string] Cláusula ORDER BY
+ * @returns {string} Cláusula ORDER BY
  */
 const sortFormat = (sort) => {
 	const sorts = Object.entries(sort).map(([key, value]) => `${key} ${value}`);
-
 	return `${sorts.join(', ')}`;
 };
 
@@ -397,6 +413,7 @@ export const getQueryMethod = async ({
 			customWhere,
 			values.length
 		);
+
 		if (customWhereValues.length > 0) {
 			filters.push(`(${customWhereClause})`);
 			customWhereValues.forEach((val) => values.push(val));
@@ -409,8 +426,11 @@ export const getQueryMethod = async ({
 			q,
 			values.length
 		);
-		filters.push(`(${qWhere})`);
-		qValues.forEach((val) => values.push(val));
+
+		if (qWhere && qValues.length > 0) {
+			filters.push(`(${qWhere})`);
+			qValues.forEach((val) => values.push(val));
+		}
 	}
 
 	if (filters.length > 0) {
@@ -423,30 +443,35 @@ export const getQueryMethod = async ({
 		sql += `\nORDER BY ${clauseSort}`;
 	}
 
-	if (limit) {
-		sql += `\nLIMIT ${limit}`;
-	}
+	const hasPagination = pageNumber && pageSize;
+	if (!hasPagination) {
+		if (limit) {
+			sql += `\nLIMIT ${limit}`;
+		}
 
-	if (offset) {
-		sql += `\nOFFSET ${offset}`;
+		if (offset) {
+			sql += `\nOFFSET ${offset}`;
+		}
 	}
 
 	let count = 0;
-	if (table && !table.includes('fn_')) {
-		const result = await pool.query(sql, values);
-		count = result.rowCount;
-	}
 
-	if (pageNumber && pageSize) {
-		const offset = getOffset(pageNumber, pageSize);
-		sql += `\nOFFSET ${offset} LIMIT ${pageSize}`;
+	if (hasPagination) {
+		const pageOffset = getOffset(pageNumber, pageSize);
+		const paginatedSql = `${sql}\nOFFSET ${pageOffset} LIMIT ${pageSize}`;
+
+		logger(__dirname, 'getQueryMethod', { sql: paginatedSql, values });
+
+		const { rows } = await pool.query(paginatedSql, values);
+		count = rows.length;
+
+		return { rows, count };
 	}
 
 	logger(__dirname, 'getQueryMethod', { sql, values });
 
 	const { rows } = await pool.query(sql, values);
-
-	count = count ? count : rows.length;
+	count = rows.length;
 
 	return { rows, count };
 };
@@ -467,10 +492,11 @@ export const getOneQueryMethod = async ({
 		limit,
 		offset,
 	});
+
 	return rows[0];
 };
 
-/**p
+/**
  *
  * @param {{ sql: string, values: any[] }} param
  * @returns {Object[]} Arreglo de objetos
@@ -483,37 +509,39 @@ export const getFromQuery = async ({ sql, values = [] }) => {
 };
 
 /**
- * Función para realizar una consulta de tipo SELECT
+ * Función para realizar una consulta de tipo INSERT
  * @param {string} table Nombre de la tabla
  * @param {Object} rows Objeto con los datos a insertar
  * @returns Se retorna un arreglo con los datos insertados
  */
 export const insertQuery = async (table, rows) => {
 	if (rows.codigo === undefined || rows.codigo >= 0) delete rows.codigo;
+
 	const keys = Object.keys(rows);
 	const values = Object.values(rows);
 
 	const query = `INSERT INTO ${table} (${keys.join(',')}) VALUES (${keys
 		.map((_key, index) => `$${index + 1}`)
 		.join(',')}) RETURNING *`;
+
 	console.log({ query, values });
+
 	const results = await pool.query(query, values);
 	return results;
 };
 
 /**
- * Función para realizar una consulta de tipo SELECT con multiples registros
+ * Función para realizar una consulta de tipo INSERT con multiples registros
  * @param {string} table Nombre de la tabla
  * @param {Object[]} rows Objeto con los datos a insertar
  * @returns Se retorna un arreglo con los datos insertados
- * @example
  */
 export const bulkInsertQuery = async (table, rows) => {
 	for await (const row of rows) {
 		console.log('-----> ', row);
-		// if (row['codigo'] === undefined || row['codigo'] === 0)
 		await insertQuery(table, row);
 	}
+
 	return { message: 'Datos insertados correctamente' };
 };
 
@@ -523,17 +551,17 @@ export const bulkInsertQuery = async (table, rows) => {
  * @param {Object[]} rows Objeto con los datos a insertar
  * @param {Object} where Objeto con los datos de la condición WHERE
  * @returns Se retorna un arreglo con los datos insertados
- * @example
  */
 export const bulkUpdateQuery = async (table, rows, where) => {
 	for await (const row of rows) {
 		await updateQuery(table, row, where);
 	}
+
 	return { message: 'Datos insertados correctamente' };
 };
 
 /**
- * Función para realizar una consulta de tipo SELECT
+ * Función para realizar una consulta de tipo UPDATE
  * @param {string} table Nombre de la tabla
  * @param {Object} rows Objeto con los datos a insertar
  * @param {Object} where Objeto con los datos de la condición WHERE
@@ -552,6 +580,7 @@ export const updateQuery = async (table, rows, where) => {
 		.map((key, index) => `${key} = $${index + rowsKeys.length + 1}`)
 		.join(' AND ')} 
 		 RETURNING *`;
+
 	const values = [...rowsValues, ...whereValues];
 
 	logger(__dirname, 'updateQuery', { query, values });
@@ -573,6 +602,7 @@ export const deleteQuery = async (table, where) => {
 		.map((key, index) => `${key} = $${index + 1}`)
 		.join(' AND ')}
 		RETURNING *`;
+
 	const results = await pool.query(query, whereValues);
 	return results;
 };
