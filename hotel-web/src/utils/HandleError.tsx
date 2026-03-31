@@ -1,10 +1,20 @@
 import swal from 'sweetalert';
 
-export const handleError = (text: string, error: any) => {
-	console.log('Error: ', { error });
-	sweetAlert({
+export const handleError = (fallbackText: string, error: any) => {
+	console.error('Error capturado:', error);
+
+	// Prioridad de mensajes
+	const message =
+		error?.friendlyMessage || // Axios interceptor
+		error?.response?.data?.error?.message || // Backend estructurado
+		error?.response?.data?.message || // Alternativo backend
+		error?.message || // Error estándar JS
+		fallbackText || // Mensaje enviado manualmente
+		'Ocurrió un error inesperado';
+
+	swal({
 		title: 'Error',
-		text: error.response?.data?.error || text,
+		text: message,
 		icon: 'error',
 		timer: 3000,
 	});
