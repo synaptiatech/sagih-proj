@@ -11,7 +11,6 @@ import { __dirname } from './log.utils.js';
  * @returns {PDFDocument} Documento PDF
  */
 export const createDocument = (colsNumber = 4) => {
-	// Landscape o Portrait (default) por cantidad de columnas
 	const doc = new PDFDocument({
 		size: colsNumber > 9 ? 'legal' : 'letter',
 		layout: colsNumber > 7 ? 'landscape' : 'portrait',
@@ -29,6 +28,7 @@ export const createDocument = (colsNumber = 4) => {
  */
 export const writeHead = (name, res) => {
 	const filename = `${name}_${new Date().toLocaleDateString('es-GT')}.pdf`;
+
 	return res.writeHead(200, {
 		'Content-Type': 'application/pdf',
 		'Content-Disposition': `attachment; filename="${filename}"`,
@@ -125,7 +125,6 @@ export const setupLetterhead = async (
  * @param {Object} columns Objeto con las columnas
  */
 export const getEmptyRow = (columns) => {
-	console.log({ columns });
 	const row = {};
 	Object.keys(columns).forEach((col) => {
 		row[col] = '';
@@ -145,31 +144,48 @@ export const getEmptyRowFromArray = (columns) => {
 };
 
 /**
- * Calcular la sumatoria de columnas monetarias
- * @param {Object} columns Objeto con columnas
- * @param {Object} sumatoria Objeto con columnas a sumar
- * @param {Object[]} rows Filas del reporte
+ * Convertir valores monetarios/texto a número sin perder decimales
+ * @param {string|number|null|undefined} value
+ * @returns {number}
+ */
+const parseMoneyValue = (value) => {
+	if (value === null || value === undefined || value === '') {
+		return 0;
+	}
+
+	if (typeof value === 'number') {
+		return Number.isFinite(value) ? value : 0;
+	}
+
+	const cleaned = String(value)
+		.replace(/GTQ/gi, '')
+		.replace('Q.', '')
+		.replace('Q', '')
+		.replace(/,/g, '')
+		.replace(/\s/g, '')
+		.trim();
+
+	const parsed = Number(cleaned);
+	return Number.isFinite(parsed) ? parsed : 0;
+};
+
+/**
+ * Configurar la numeración de páginas
+ * @param {PDFDocument} doc Documento actual
  */
 export const calcSumatoria = (columns, sumatoria, rows) => {
 	const objetoSuma = {};
 
 	Object.keys(columns).forEach((key) => {
 		if (key in sumatoria) {
+			const total = rows.reduce((prev, curr) => {
+				return prev + parseMoneyValue(curr?.[key]);
+			}, 0);
+
 			objetoSuma[key] = new Intl.NumberFormat('es-GT', {
 				style: 'currency',
 				currency: 'GTQ',
-			}).format(
-				rows.reduce((prev, curr) => {
-					const rawValue = `${curr?.[key] ?? ''}`;
-					const cleanValue = rawValue
-						.replace('Q.', '')
-						.replace('Q', '')
-						.replace(/,/g, '')
-						.trim();
-
-					return Number(prev) + (Number(cleanValue) || 0);
-				}, 0)
-			);
+			}).format(total);
 		} else {
 			objetoSuma[key] = '    ';
 		}
@@ -187,10 +203,6 @@ export const calcSumatoria = (columns, sumatoria, rows) => {
 	return { cabecera, objetoSuma };
 };
 
-/**
- * Configurar la numeración de páginas
- * @param {PDFDocument} doc Documento actual
- */
 export const setupPagesNumber = (doc) => {
 	let curPage;
 	let endPage;
@@ -240,9 +252,12 @@ export const getCellsAlign = (key, value = '') => {
 		key.includes('abono')
 	) {
 		return 'right';
-	} else if (typeof value === 'string' && value.includes('Q.')) {
+	}
+
+	if (typeof value === 'string' && value.includes('Q.')) {
 		return 'right';
 	}
+
 	return 'left';
 };
 
@@ -266,21 +281,65 @@ const getOperatorByRelation = (relation) => {
 };
 
 /**
+ * Normalizar valores de fecha para SQL
+ * @param {any} value
+ * @returns {any}
+ */
+const normalizeDateValue = (value) => {
+	if (value === null || value === undefined || value === '') {
+		return value;
+	}
+
+	if (value instanceof Date && !Number.isNaN(value.getTime())) {
+		return value.toISOString().slice(0, 10);
+	}
+
+	if (typeof value !== 'string') {
+		return value;
+	}
+
+	const trimmed = value.trim();
+
+	// YYYY-MM-DD o YYYY-MM-DD HH:mm:ss
+	const isoMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+	if (isoMatch) {
+		return isoMatch[1];
+	}
+
+	// DD/MM/YYYY
+	const latamMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+	if (latamMatch) {
+		const [, dd, mm, yyyy] = latamMatch;
+		return `${yyyy}-${mm}-${dd}`;
+	}
+
+	return trimmed;
+};
+
+/**
  * Obtener el where de la consulta
  * @param {Object[]} where Criterio de búsqueda
  * @returns {[string, any[]]} Where de la consulta
  */
 export const getCustomWhere = (where) => {
 	const values = [];
+	let paramIndex = 1;
+
 	const str = where
-		.map((w, index) => {
-			if (w.columna.includes('fecha')) {
-				values.push(w.valor);
-				return `${w.columna} ${getOperatorByRelation(w.relacion)} $${
-					index + 1
-				}`;
+		.map((w) => {
+			if (!w?.columna || w?.valor === undefined || w?.valor === null || w?.valor === '') {
+				return null;
 			}
-			return null;
+
+			let valueToPush = w.valor;
+
+			if (w.columna.includes('fecha')) {
+				valueToPush = normalizeDateValue(w.valor);
+			}
+
+			values.push(valueToPush);
+
+			return `${w.columna} ${getOperatorByRelation(w.relacion)} $${paramIndex++}`;
 		})
 		.filter(Boolean)
 		.join(' AND ');
