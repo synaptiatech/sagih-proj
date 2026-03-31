@@ -32,6 +32,7 @@ const FormReporte = ({
 									Criterio del reporte
 								</Typography>
 							</FilasBox>
+
 							<form onSubmit={handleSubmit}>
 								<Box
 									sx={{
@@ -43,10 +44,11 @@ const FormReporte = ({
 											md: 'repeat(3, 3fr)',
 										},
 										mb: 2,
-									}}>
+									}}
+								>
 									{state.queryFiltro.map((query, index) => (
 										<Box
-											key={`${query.columna} + ${index}`}
+											key={`${query.columna}-${index}`}
 											sx={{
 												display: 'grid',
 												gap: 2,
@@ -55,36 +57,36 @@ const FormReporte = ({
 													sm: '2fr 1fr 3fr',
 												},
 												alignItems: 'center',
-											}}>
-											<Typography
-												sx={{
-													py: 1,
-												}}>
+											}}
+										>
+											<Typography sx={{ py: 1 }}>
 												{query.nombre}
 											</Typography>
-											<Typography
-												sx={{
-													py: 1,
-												}}>
+
+											<Typography sx={{ py: 1 }}>
 												{query.relacion}
 											</Typography>
+
 											{query.valores.length ? (
 												<Autocomplete
 													options={query.valores}
 													getOptionLabel={(option) =>
-														option.valor
+														option?.valor ?? ''
 													}
-													onChange={(
-														_event: any,
-														value: any
-													) => {
+													isOptionEqualToValue={(option, value) =>
+														option?.id === value?.id
+													}
+													value={
+														query.valores.find(
+															(v: any) => v.id === query.valor
+														) || null
+													}
+													onChange={(_event: any, value: any) => {
 														dispatch({
 															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
 															payload: {
 																index,
-																valor: value
-																	? value.id
-																	: '',
+																valor: value ? value.id : '',
 															},
 														});
 													}}
@@ -115,15 +117,12 @@ const FormReporte = ({
 															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
 															payload: {
 																index,
-																valor: e.target
-																	.value,
+																valor: e.target.value,
 															},
 														});
 													}}
 												/>
-											) : query.columna.includes(
-													'fecha'
-											  ) ? (
+											) : query.columna.includes('fecha') ? (
 												<TextField
 													sx={{ py: 1 }}
 													type='date'
@@ -138,8 +137,7 @@ const FormReporte = ({
 															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
 															payload: {
 																index,
-																valor: e.target
-																	.value,
+																valor: e.target.value,
 															},
 														});
 													}}
@@ -155,8 +153,7 @@ const FormReporte = ({
 															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
 															payload: {
 																index,
-																valor: e.target
-																	.value,
+																valor: e.target.value,
 															},
 														});
 													}}
@@ -165,6 +162,7 @@ const FormReporte = ({
 										</Box>
 									))}
 								</Box>
+
 								<Box>
 									<Button variant='contained' type='submit'>
 										Generar reporte
@@ -174,30 +172,6 @@ const FormReporte = ({
 						</>
 					</Content>
 				</Card>
-				{/* <Card>
-					<Content>
-						<>
-							<FilasBox>
-								<Typography variant='h5'>
-									Columnas a mostrarse en el reporte
-								</Typography>
-							</FilasBox>
-							<Table
-								sx={{ border: 2, borderCollapse: 'collapse' }}>
-								<thead>
-									<tr>
-										{Object.values(state.colsReporte).map(
-											(col, index) => (
-												<th
-													key={`${col}${index}`}>{`${col}`}</th>
-											)
-										)}
-									</tr>
-								</thead>
-							</Table>
-						</>
-					</Content>
-				</Card> */}
 			</ContentWithTitle>
 		</>
 	);
