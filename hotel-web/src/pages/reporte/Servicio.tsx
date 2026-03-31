@@ -55,35 +55,66 @@ const Servicio = () => {
 		try {
 			setLoading(true);
 
-			const customWhere = state.queryFiltro
-				.map((q: any) => {
-					let valor = q.valor;
+			const customWhere: Array<{
+				columna: string;
+				relacion: string;
+				valor: any;
+			}> = [];
 
-					if (
-						q.columna?.includes('fecha') &&
-						valor !== '' &&
-						valor !== null &&
-						valor !== undefined
-					) {
-						const parsed = dayjs(valor);
-						valor = parsed.isValid()
-							? parsed.format(API_DATE_FORMAT)
-							: valor;
-					}
+			state.queryFiltro.forEach((filtro: any) => {
+				if (
+					filtro.valor === '' ||
+					filtro.valor === null ||
+					filtro.valor === undefined
+				) {
+					return;
+				}
 
-					return {
-						columna: q.columna,
-						relacion: q.relacion,
-						valor,
-					};
-				})
-				.filter((q: any) => q.valor !== '');
+				if (filtro.columna === 'dat_fecha_ingreso') {
+					customWhere.push({
+						columna: 'dat_fecha_ingreso',
+						valor: dayjs(filtro.valor).isValid()
+							? dayjs(filtro.valor).format(API_DATE_FORMAT)
+							: filtro.valor,
+						relacion: filtro.relacion,
+					});
+					return;
+				}
+
+				if (filtro.columna === 'dat_fecha_salida') {
+					customWhere.push({
+						columna: 'dat_fecha_salida',
+						valor: dayjs(filtro.valor).isValid()
+							? dayjs(filtro.valor).format(API_DATE_FORMAT)
+							: filtro.valor,
+						relacion: filtro.relacion,
+					});
+					return;
+				}
+
+				if (filtro.columna === 'servicio') {
+					customWhere.push({
+						columna: 'servicio',
+						valor: Number(filtro.valor),
+						relacion: '=',
+					});
+					return;
+				}
+
+				customWhere.push({
+					columna: filtro.columna,
+					relacion: filtro.relacion,
+					valor: filtro.valor,
+				});
+			});
 
 			customWhere.push({
 				columna: 'tipo_transaccion',
 				relacion: '=',
 				valor: 'CI',
 			});
+
+			console.log('CUSTOM WHERE SERVICIO:', customWhere);
 
 			const { data } = await downloadFile({
 				path: `${URI.reporte}/parametrizado`,
@@ -116,30 +147,36 @@ const Servicio = () => {
 					nombre: 'Servicio',
 					relacion: '=',
 					columna: 'servicio',
-					valores: servicios.map((s: ServicioType) => ({
-						valor: `${s.codigo} ${s.nombre}`,
-						id: s.codigo,
-					})),
+					valores: servicios.map((s: ServicioType) => {
+						return {
+							valor: `${s.codigo} ${s.nombre}`,
+							id: s.codigo,
+						};
+					}),
 					valor: '',
 				},
 				{
 					nombre: 'Habitación',
 					relacion: '=',
 					columna: 'habitacion',
-					valores: habitacion.map((h: HabitacionType) => ({
-						valor: `${h.codigo}`,
-						id: h.codigo,
-					})),
+					valores: habitacion.map((h: HabitacionType) => {
+						return {
+							valor: `${h.codigo}`,
+							id: h.codigo,
+						};
+					}),
 					valor: '',
 				},
 				{
 					nombre: 'Cliente',
 					relacion: '=',
 					columna: 'cliente',
-					valores: clientes.map((c: ClienteType) => ({
-						valor: `${c.codigo} ${c.nombre}`,
-						id: c.codigo,
-					})),
+					valores: clientes.map((c: ClienteType) => {
+						return {
+							valor: `${c.codigo} ${c.nombre}`,
+							id: c.codigo,
+						};
+					}),
 					valor: '',
 				},
 				{
@@ -184,6 +221,7 @@ const Servicio = () => {
 	}, [data]);
 
 	if (isLoading) return <GridSkeleton />;
+
 	if (error) return <ErrorLayout error={`${error}`} />;
 
 	return (
