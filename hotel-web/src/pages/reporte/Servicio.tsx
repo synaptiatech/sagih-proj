@@ -94,7 +94,7 @@ const Servicio = () => {
 
 				if (filtro.columna === 'servicio') {
 					customWhere.push({
-						columna: 'servicio',
+						columna: 'dt.servicio',
 						valor: Number(filtro.valor),
 						relacion: '=',
 					});
