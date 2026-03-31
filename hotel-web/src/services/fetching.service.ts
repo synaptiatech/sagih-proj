@@ -9,62 +9,74 @@ type axiosProps = {
 	headers?: TypeWithKey<string>;
 };
 
+const DEFAULT_HEADERS = {
+	'Content-Type': 'application/json',
+};
+
+/**
+ * Manejo centralizado de errores
+ */
+const handleRequest = async (request: Promise<any>) => {
+	try {
+		const response = await request;
+		return response;
+	} catch (error: any) {
+		console.error('API ERROR:', error);
+
+		// Si viene error estructurado del backend
+		const message =
+			error?.response?.data?.error?.message ||
+			error?.response?.data?.message ||
+			'Error en la comunicación con el servidor';
+
+		throw new Error(message);
+	}
+};
+
 export const dataGet = ({
 	path,
 	params,
-	headers = {
-		'Content-Type': 'application/json',
-	},
+	headers = DEFAULT_HEADERS,
 }: axiosProps) => {
-	return api.get(path, { headers, params });
+	return handleRequest(api.get(path, { headers, params }));
 };
 
 export const dataGetFromPost = ({
 	path,
 	query,
-	headers = {
-		'Content-Type': 'application/json',
-	},
+	headers = DEFAULT_HEADERS,
 }: axiosProps) => {
-	return api.post(path, {}, { headers, params: query });
+	return handleRequest(api.post(path, {}, { headers, params: query }));
 };
 
 export const dataPost = ({
 	path,
 	data,
-	headers = {
-		'Content-Type': 'application/json',
-	},
+	headers = DEFAULT_HEADERS,
 }: axiosProps) => {
-	return api.post(path, data, { headers });
+	return handleRequest(api.post(path, data, { headers }));
 };
 
 export const dataUpdate = ({
 	path,
 	data,
 	params = {},
-	headers = {
-		'Content-Type': 'application/json',
-	},
+	headers = DEFAULT_HEADERS,
 }: axiosProps) => {
-	return api.put(path, data, { headers, params });
+	return handleRequest(api.put(path, data, { headers, params }));
 };
 
 export const dataDelete = ({
 	path,
 	params,
-	headers = {
-		'Content-Type': 'application/json',
-	},
+	headers = DEFAULT_HEADERS,
 }: axiosProps) => {
-	console.log('Making DELETE request with the following parameters:');
-	console.log('Path:', path);
-	console.log('Headers:', headers);
-	console.log('Params:', params);
-	return api.delete(path, {
-		headers,
-		params,
-	});
+	return handleRequest(
+		api.delete(path, {
+			headers,
+			params,
+		})
+	);
 };
 
 export interface DownloadFileProps {
@@ -80,7 +92,10 @@ export interface DownloadFileProps {
 	sumatoria?: Record<string, any>;
 }
 
-export const downloadFile = ({
+/**
+ * Descarga de archivos (PDF)
+ */
+export const downloadFile = async ({
 	path,
 	name,
 	table,
@@ -92,24 +107,45 @@ export const downloadFile = ({
 	sort = {},
 	sumatoria = {},
 }: DownloadFileProps) => {
-	return api.post(
-		path,
-		{
-			name,
-			table,
-			sort,
-			columns,
-			masterColumns,
-			detailColumns,
-			customWhere,
-			sumatoria,
-		},
-		{
-			responseType: 'arraybuffer',
-			headers: {
-				Accept: 'application/pdf',
+	try {
+		const response = await api.post(
+			path,
+			{
+				name,
+				table,
+				sort,
+				columns,
+				masterColumns,
+				detailColumns,
+				customWhere,
+				sumatoria,
 			},
-			params: where,
+			{
+				responseType: 'arraybuffer',
+				headers: {
+					Accept: 'application/pdf',
+				},
+				params: where,
+			}
+		);
+
+		return response;
+	} catch (error: any) {
+		console.error('DOWNLOAD ERROR:', error);
+
+		// ⚠️ Manejo clave: cuando backend devuelve JSON en lugar de PDF
+		try {
+			const text = new TextDecoder().decode(error.response.data);
+			const json = JSON.parse(text);
+
+			const message =
+				json?.error?.message ||
+				json?.message ||
+				'No se pudo generar el reporte';
+
+			throw new Error(message);
+		} catch {
+			throw new Error('Error al generar o descargar el archivo');
 		}
-	);
+	}
 };
