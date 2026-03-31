@@ -724,6 +724,7 @@ const obtenerDiasMes = (fecha) => {
 export const getReporteParametrizado = async ({ body, query, user }, res) => {
 	try {
 		const { name, table, columns, customWhere } = body;
+
 		console.log('**************');
 		console.log({ customWhere });
 		console.log('**************');
@@ -740,6 +741,19 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 			sql: sqlQuery,
 			values: values,
 		});
+
+		console.log(
+			`Reporte parametrizado "${name}" -> filas encontradas:`,
+			rows.length
+		);
+
+		const MAX_ROWS_FOR_PDF = 500;
+
+		if (rows.length > MAX_ROWS_FOR_PDF) {
+			throw new Error(
+				`El reporte contiene ${rows.length} registros. Agrega más filtros para generar el PDF.`
+			);
+		}
 
 		if (rows.length === 0) {
 			const emptyRow = getEmptyRow(body.columns);
@@ -780,11 +794,13 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 			console.log('**************');
 			console.log({ sumatoria: body.sumatoria });
 			console.log('**************');
+
 			const { cabecera, objetoSuma } = calcSumatoria(
 				columns,
 				body.sumatoria,
 				rows
 			);
+
 			doc.addTable(cabecera, [objetoSuma], {
 				fontSize: 12,
 				border: {
