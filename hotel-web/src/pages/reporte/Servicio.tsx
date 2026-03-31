@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useReducer, useState } from 'react';
+import { FormEvent, useEffect, useReducer, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import FormReporte from '../../components/form/FormReporte';
 import ErrorLayout from '../../components/layout/error';
@@ -25,6 +25,7 @@ const toApiDate = (date: Date) => {
 
 const Servicio = () => {
 	const [loading, setLoading] = useState(false);
+	const initializedRef = useRef(false);
 
 	const { data, isLoading, error } = useFetch({
 		path: `${URI.servicio._}/reportes`,
@@ -104,90 +105,85 @@ const Servicio = () => {
 	}
 
 	useEffect(() => {
-		if (data) {
-			const { clientes, habitacion, servicios } = data;
+		if (!data || initializedRef.current) return;
 
-			dispatch({
-				type: reporteReducerTypes.SET_QUERY_FILTRO,
-				payload: [
-					{
-						nombre: 'Servicio',
-						relacion: '=',
-						columna: 'servicio',
-						valores: servicios.map((s: ServicioType) => {
-							return {
-								valor: `${s.codigo} ${s.nombre}`,
-								id: s.codigo,
-							};
-						}),
-						valor: '',
-					},
-					{
-						nombre: 'Habitación',
-						relacion: '=',
-						columna: 'habitacion',
-						valores: habitacion.map((h: HabitacionType) => {
-							return {
-								valor: `${h.codigo}`,
-								id: h.codigo,
-							};
-						}),
-						valor: '',
-					},
-					{
-						nombre: 'Cliente',
-						relacion: '=',
-						columna: 'cliente',
-						valores: clientes.map((c: ClienteType) => {
-							return {
-								valor: `${c.codigo} ${c.nombre}`,
-								id: c.codigo,
-							};
-						}),
-						valor: '',
-					},
-					{
-						nombre: 'Fecha de ingreso',
-						relacion: '>=',
-						columna: 'dat_fecha_ingreso',
-						valores: [],
-						valor: toApiDate(new Date(new Date().setDate(1))),
-					},
-					{
-						nombre: 'y',
-						relacion: '<=',
-						columna: 'dat_fecha_ingreso',
-						valores: [],
-						valor: toApiDate(new Date()),
-					},
-					{
-						nombre: 'Subtotal',
-						columna: 'num_subtotal',
-						relacion: '>=',
-						valores: [],
-						valor: '',
-					},
-					{
-						nombre: 'Fecha de salida',
-						relacion: '>=',
-						columna: 'dat_fecha_salida',
-						valores: [],
-						valor: '',
-					},
-					{
-						nombre: 'y',
-						relacion: '<=',
-						columna: 'dat_fecha_salida',
-						valores: [],
-						valor: '',
-					},
-				],
-			});
-		}
+		const { clientes, habitacion, servicios } = data;
+
+		dispatch({
+			type: reporteReducerTypes.SET_QUERY_FILTRO,
+			payload: [
+				{
+					nombre: 'Servicio',
+					relacion: '=',
+					columna: 'servicio',
+					valores: servicios.map((s: ServicioType) => ({
+						valor: `${s.codigo} ${s.nombre}`,
+						id: s.codigo,
+					})),
+					valor: '',
+				},
+				{
+					nombre: 'Habitación',
+					relacion: '=',
+					columna: 'habitacion',
+					valores: habitacion.map((h: HabitacionType) => ({
+						valor: `${h.codigo}`,
+						id: h.codigo,
+					})),
+					valor: '',
+				},
+				{
+					nombre: 'Cliente',
+					relacion: '=',
+					columna: 'cliente',
+					valores: clientes.map((c: ClienteType) => ({
+						valor: `${c.codigo} ${c.nombre}`,
+						id: c.codigo,
+					})),
+					valor: '',
+				},
+				{
+					nombre: 'Fecha de ingreso',
+					relacion: '>=',
+					columna: 'dat_fecha_ingreso',
+					valores: [],
+					valor: toApiDate(new Date(new Date().setDate(1))),
+				},
+				{
+					nombre: 'y',
+					relacion: '<=',
+					columna: 'dat_fecha_ingreso',
+					valores: [],
+					valor: toApiDate(new Date()),
+				},
+				{
+					nombre: 'Subtotal',
+					columna: 'num_subtotal',
+					relacion: '>=',
+					valores: [],
+					valor: '',
+				},
+				{
+					nombre: 'Fecha de salida',
+					relacion: '>=',
+					columna: 'dat_fecha_salida',
+					valores: [],
+					valor: '',
+				},
+				{
+					nombre: 'y',
+					relacion: '<=',
+					columna: 'dat_fecha_salida',
+					valores: [],
+					valor: '',
+				},
+			],
+		});
+
+		initializedRef.current = true;
 	}, [data]);
 
 	if (isLoading) return <GridSkeleton />;
-
 	if (error) return <ErrorLayout error={`${error}`} />;
 
 	return (
