@@ -1,8 +1,8 @@
 import {
-	Autocomplete,
 	Box,
 	Button,
 	Card,
+	MenuItem,
 	TextField,
 	Typography,
 } from '@mui/material';
@@ -68,38 +68,35 @@ const FormReporte = ({
 											</Typography>
 
 											{query.valores.length ? (
-												<Autocomplete
-													options={query.valores}
-													getOptionLabel={(option) =>
-														option?.valor ?? ''
-													}
-													isOptionEqualToValue={(option, value) =>
-														option?.id === value?.id
-													}
-													value={
-														query.valores.find(
-															(v: any) => v.id === query.valor
-														) || null
-													}
-													onChange={(_event: any, value: any) => {
+												<TextField
+													select
+													sx={{ py: 1 }}
+													label={query.nombre}
+													variant='standard'
+													color='primary'
+													value={query.valor ?? ''}
+													onChange={(e) => {
 														dispatch({
 															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
 															payload: {
 																index,
-																valor: value ? value.id : '',
+																valor: e.target.value,
 															},
 														});
 													}}
-													renderInput={(params) => (
-														<TextField
-															{...params}
-															sx={{ py: 1 }}
-															label={query.nombre}
-															variant='standard'
-															color='primary'
-														/>
-													)}
-												/>
+												>
+													<MenuItem value=''>
+														Todos
+													</MenuItem>
+													{query.valores.map((option: any, optionIndex: number) => (
+														<MenuItem
+															key={`${query.columna}-option-${option.id}-${optionIndex}`}
+															value={option.id}
+														>
+															{option.valor}
+														</MenuItem>
+													))}
+												</TextField>
 											) : query.nombre
 													.toLowerCase()
 													.includes('mes') ? (
@@ -147,7 +144,7 @@ const FormReporte = ({
 													sx={{ py: 1 }}
 													variant='standard'
 													color='primary'
-													value={query.valor}
+													value={query.valor ?? ''}
 													onChange={(e) => {
 														dispatch({
 															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
