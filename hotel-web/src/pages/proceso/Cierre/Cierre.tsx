@@ -17,9 +17,39 @@ import { handleError } from '../../../utils/HandleError';
 
 export type CierreProps = {};
 
+const INPUT_DATE_TIME_FORMAT = 'YYYY-MM-DDTHH:mm';
+const API_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+
+const toInputDateTime = (value?: string | Date | null) => {
+	if (!value) {
+		return dayjs().format(INPUT_DATE_TIME_FORMAT);
+	}
+
+	const parsed = dayjs(value);
+	if (parsed.isValid()) {
+		return parsed.format(INPUT_DATE_TIME_FORMAT);
+	}
+
+	return dayjs().format(INPUT_DATE_TIME_FORMAT);
+};
+
+const toApiDateTime = (value?: string | null) => {
+	if (!value) {
+		return dayjs().format(API_DATE_TIME_FORMAT);
+	}
+
+	const parsed = dayjs(value);
+	if (parsed.isValid()) {
+		return parsed.format(API_DATE_TIME_FORMAT);
+	}
+
+	return dayjs().format(API_DATE_TIME_FORMAT);
+};
+
 const Cierre: React.FC<CierreProps> = () => {
 	const [loading, setLoading] = useState(false);
 	const [isClosed, setisClosed] = useState(false);
+
 	const {
 		data: cierre,
 		refetch,
@@ -32,6 +62,7 @@ const Cierre: React.FC<CierreProps> = () => {
 			fecha_cierre: 'Cierre',
 		},
 	});
+
 	const {
 		control,
 		setValue,
@@ -40,9 +71,9 @@ const Cierre: React.FC<CierreProps> = () => {
 		formState: { errors },
 	} = useForm<CierreType>({
 		defaultValues: {
-			openingDate: dayjs().format('YYYY-MM-DD HH:mm'),
-			shiftClose: dayjs().format('YYYY-MM-DD HH:mm'),
-			actualClose: dayjs().format('YYYY-MM-DD HH:mm'),
+			openingDate: toInputDateTime(new Date()),
+			shiftClose: toInputDateTime(new Date()),
+			actualClose: toInputDateTime(new Date()),
 		},
 		resolver: yupResolver(schemaCierre),
 		mode: 'onBlur',
@@ -51,27 +82,25 @@ const Cierre: React.FC<CierreProps> = () => {
 	const onSubmit: SubmitHandler<CierreType> = async (data: CierreType) => {
 		try {
 			const body = {
-				fecha_cierre: dayjs(
-					data.shiftClose,
-					'YYYY-MM-DD HH:mm:ss'
-				).format('YYYY-MM-DD HH:mm:ss'),
-				fecha_real: dayjs(
-					data.actualClose,
-					'YYYY-MM-DD HH:mm:ss'
-				).format('YYYY-MM-DD HH:mm:ss'),
+				fecha_cierre: toApiDateTime(data.shiftClose),
+				fecha_real: toApiDateTime(data.actualClose),
 			};
+
 			console.log({ body });
 
 			await dataPost({
 				path: `${URI.cierre}`,
 				data: body,
 			});
+
 			refetch();
+
 			swal(
 				'¡Cierre realizado!',
 				'El cierre se realizó correctamente',
 				'success'
 			);
+
 			setisClosed(true);
 		} catch (error) {
 			handleError('No se pudo realizar el cierre', error);
@@ -82,10 +111,14 @@ const Cierre: React.FC<CierreProps> = () => {
 		try {
 			setLoading(true);
 
+			const openingDate = toApiDateTime(getValues('openingDate'));
+			const shiftClose = toApiDateTime(getValues('shiftClose'));
+			const actualClose = toApiDateTime(getValues('actualClose'));
+
 			console.log({
-				openingDate: getValues('openingDate'),
-				shiftClose: getValues('shiftClose'),
-				actualClose: getValues('actualClose'),
+				openingDate,
+				shiftClose,
+				actualClose,
 			});
 
 			const { data } = await downloadFile({
@@ -94,17 +127,15 @@ const Cierre: React.FC<CierreProps> = () => {
 				table: 'cierre',
 				columns: {},
 				where: {
-					fecha_apertura: dayjs(
-						getValues('openingDate'),
-						'YYYY-MM-DDTHH:mm:ss'
-					).format('YYYY-MM-DD HH:mm:ss'),
-					fecha_cierre_turno: getValues('shiftClose'),
-					fecha_cierre: getValues('actualClose'),
+					fecha_apertura: openingDate,
+					fecha_cierre_turno: shiftClose,
+					fecha_cierre: actualClose,
 				},
 			});
+
 			downloadFileByBloodPart(data, 'Cierre');
 		} catch (error) {
-			handleError('No se pudo realizar el cierre', error);
+			handleError('No se pudo generar el reporte de cierre', error);
 		} finally {
 			setLoading(false);
 		}
@@ -113,15 +144,13 @@ const Cierre: React.FC<CierreProps> = () => {
 	useEffect(() => {
 		if (cierre !== undefined) {
 			console.log('Cierre >', cierre);
+
 			setValue(
 				'openingDate',
-				dayjs(
-					cierre?.fecha_cierre ?? new Date(),
-					'YYYY-MM-DD HH:mm:ss:SSSZ'
-				).format('YYYY-MM-DDTHH:mm:ss')
+				toInputDateTime(cierre?.fecha_cierre ?? new Date())
 			);
 		}
-	}, [isLoading]);
+	}, [cierre, setValue]);
 
 	if (isLoading) return <GridSkeleton />;
 	if (isError) return <ErrorLayout error='No se pudo cargar los datos' />;
@@ -139,7 +168,8 @@ const Cierre: React.FC<CierreProps> = () => {
 									flexWrap: 'wrap',
 									gap: 2,
 									p: 2,
-								}}>
+								}}
+							>
 								<Controller
 									control={control}
 									name='openingDate'
@@ -156,9 +186,7 @@ const Cierre: React.FC<CierreProps> = () => {
 												readOnly: true,
 											}}
 											error={!!errors.openingDate}
-											helperText={
-												errors.openingDate?.message
-											}
+											helperText={errors.openingDate?.message}
 										/>
 									)}
 								/>
@@ -175,9 +203,7 @@ const Cierre: React.FC<CierreProps> = () => {
 												shrink: true,
 											}}
 											error={!!errors.shiftClose}
-											helperText={
-												errors.shiftClose?.message
-											}
+											helperText={errors.shiftClose?.message}
 										/>
 									)}
 								/>
@@ -197,26 +223,27 @@ const Cierre: React.FC<CierreProps> = () => {
 												readOnly: true,
 											}}
 											error={!!errors.actualClose}
-											helperText={
-												errors.actualClose?.message
-											}
+											helperText={errors.actualClose?.message}
 										/>
 									)}
 								/>
 								<Button
 									type='submit'
 									variant='contained'
-									disabled={isClosed}>
+									disabled={isClosed}
+								>
 									Cerrar turno
 								</Button>
 							</Box>
 						</form>
-						<Button variant='contained' onClick={() => download()}>
+
+						<Button variant='contained' onClick={download}>
 							Generar reporte
 						</Button>
 					</Content>
 				</Card>
 			</ContentWithTitle>
+
 			{loading && <Loader />}
 		</>
 	);
