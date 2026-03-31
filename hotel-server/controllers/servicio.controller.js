@@ -17,7 +17,7 @@ export const getTipoServicio = async ({ query }, res) => {
 		});
 		res.status(200).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -26,7 +26,7 @@ export const getAllTipoServicios = async ({ query, body }, res) => {
 		const results = await getQueryMethod({ ...body, query });
 		res.status(200).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -35,7 +35,7 @@ export const createTipoServicios = async (req, res) => {
 		const results = await insertQuery(tablesName.TIPO_SERVICIO, req.body);
 		res.status(200).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -50,7 +50,7 @@ export const updateTipoServicios = async (req, res) => {
 		);
 		res.status(200).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -59,18 +59,18 @@ export const deleteTipoServicios = async (req, res) => {
 		const results = await deleteQuery(tablesName.TIPO_SERVICIO, req.query);
 		res.status(204).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
 export const getParametros = async (req, res) => {
 	try {
-		let { rows } = await getQueryMethod({
+		const { rows } = await getQueryMethod({
 			table: tablesName.TIPO_SERVICIO,
 		});
 		res.status(200).json({ tipo: rows });
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -79,7 +79,7 @@ export const getServicioByFiltering = async (req, res) => {
 		const results = await getWithFilter(tablesName.SERVICIO, req.query);
 		res.status(200).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -88,18 +88,29 @@ export const getDataForReportes = async (req, res) => {
 		const { rows: servicios } = await getQueryMethod({
 			table: tablesName.SERVICIO,
 		});
+
 		const { rows: clientes } = await getQueryMethod({
 			table: tablesName.CLIENTE,
 		});
+
 		const { rows: habitacion } = await getQueryMethod({
 			table: tablesName.HABITACION,
+			columns: {
+				codigo: 'codigo',
+			},
+			limit: 200,
+			sort: {
+				codigo: 'ASC',
+			},
 		});
+
 		const { rows: tiTran } = await getQueryMethod({
 			table: tablesName.TI_TRAN,
 		});
+
 		res.status(200).json({ servicios, clientes, habitacion, tiTran });
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -111,7 +122,7 @@ export const getServicio = async ({ query }, res) => {
 		});
 		res.status(200).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -120,7 +131,7 @@ export const getAllServicios = async ({ query, body }, res) => {
 		const results = await getQueryMethod({ ...body, query });
 		res.status(200).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -129,7 +140,7 @@ export const createServicios = async (req, res) => {
 		const results = await insertQuery(tablesName.SERVICIO, req.body);
 		res.status(200).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
@@ -144,15 +155,15 @@ export const updateServicios = async (req, res) => {
 		);
 		res.status(200).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
 
 export const deleteServicios = async (req, res) => {
 	try {
 		const results = await deleteQuery(tablesName.SERVICIO, req.query);
-		res.send(204).json(results);
+		res.status(204).json(results);
 	} catch (error) {
-		errorHandler(res, error);
+		return errorHandler(res, error);
 	}
 };
