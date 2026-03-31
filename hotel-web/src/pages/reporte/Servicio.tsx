@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useReducer, useState } from 'react';
+import dayjs from 'dayjs';
 import FormReporte from '../../components/form/FormReporte';
 import ErrorLayout from '../../components/layout/error';
 import Loader from '../../components/layout/loader';
@@ -12,18 +13,24 @@ import { useFetch } from '../../hooks/useFetch';
 import { ClienteType } from '../../props/ClienteProps';
 import { HabitacionType } from '../../props/HabitacionProps';
 import { ServicioType } from '../../props/ServicioProps';
-import { TiposType } from '../../props/Tipos';
 import { downloadFile } from '../../services/fetching.service';
 import { downloadFileByBloodPart } from '../../utils/DownloadFile';
 import { handleError } from '../../utils/HandleError';
-import { formatDateToInput } from '../../utils/Formateo';
+
+const API_DATE_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+
+const toApiDate = (date: Date) => {
+	return dayjs(date).format(API_DATE_FORMAT);
+};
 
 const Servicio = () => {
 	const [loading, setLoading] = useState(false);
+
 	const { data, isLoading, error } = useFetch({
 		path: `${URI.servicio._}/reportes`,
 		table: 'v_reporte_servicio',
 	});
+
 	const [state, dispatch] = useReducer(reporteReducer, {
 		colsReporte: {
 			documento: 'DOCUMENTO',
@@ -43,18 +50,34 @@ const Servicio = () => {
 		_event: FormEvent<HTMLFormElement>
 	): Promise<void> {
 		_event.preventDefault();
+
 		try {
 			setLoading(true);
 
 			const customWhere = state.queryFiltro
 				.map((q: any) => {
+					let valor = q.valor;
+
+					if (
+						q.columna?.includes('fecha') &&
+						valor !== '' &&
+						valor !== null &&
+						valor !== undefined
+					) {
+						const parsed = dayjs(valor);
+						valor = parsed.isValid()
+							? parsed.format(API_DATE_FORMAT)
+							: valor;
+					}
+
 					return {
 						columna: q.columna,
 						relacion: q.relacion,
-						valor: q.valor,
+						valor,
 					};
 				})
 				.filter((q: any) => q.valor !== '');
+
 			customWhere.push({
 				columna: 'tipo_transaccion',
 				relacion: '=',
@@ -66,11 +89,12 @@ const Servicio = () => {
 				name: 'Servicios',
 				table: 'v_reporte_servicio',
 				columns: state.colsReporte,
-				customWhere: customWhere,
+				customWhere,
 				sumatoria: {
 					subtotal: 'Subtotal',
 				},
 			});
+
 			downloadFileByBloodPart(data, 'Servicios');
 		} catch (error) {
 			handleError('No se pudo descargar el archivo', error);
@@ -81,7 +105,7 @@ const Servicio = () => {
 
 	useEffect(() => {
 		if (data) {
-			const { clientes, habitacion, servicios, tiTran } = data;
+			const { clientes, habitacion, servicios } = data;
 
 			dispatch({
 				type: reporteReducerTypes.SET_QUERY_FILTRO,
@@ -122,36 +146,19 @@ const Servicio = () => {
 						}),
 						valor: '',
 					},
-					// {
-					// 	nombre: 'Tipo de transacción',
-					// 	relacion: '=',
-					// 	columna: 'tipo_transaccion',
-					// 	valores: tiTran.map((t: TiposType) => {
-					// 		return {
-					// 			valor: `${t.codigo}`,
-					// 			id: t.codigo,
-					// 		};
-					// 	}),
-					// 	valor: '',
-					// },
 					{
 						nombre: 'Fecha de ingreso',
 						relacion: '>=',
 						columna: 'dat_fecha_ingreso',
 						valores: [],
-						valor: formatDateToInput({
-							date: new Date(),
-							setDay: 1,
-						}),
+						valor: toApiDate(new Date(new Date().setDate(1))),
 					},
 					{
 						nombre: 'y',
 						relacion: '<=',
 						columna: 'dat_fecha_ingreso',
 						valores: [],
-						valor: formatDateToInput({
-							date: new Date(),
-						}),
+						valor: toApiDate(new Date()),
 					},
 					{
 						nombre: 'Subtotal',
@@ -177,7 +184,7 @@ const Servicio = () => {
 				],
 			});
 		}
-	}, [isLoading, data]);
+	}, [data]);
 
 	if (isLoading) return <GridSkeleton />;
 
