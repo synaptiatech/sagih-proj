@@ -1,9 +1,9 @@
-import React, { FormEvent, useEffect, useState } from 'react';
+import React, { FormEvent, useEffect } from 'react';
+import dayjs from 'dayjs';
 import { URI } from '../../consts/Uri';
 import { useFetch } from '../../hooks/useFetch';
 import { reporteReducerTypes } from '../../hooks/reporteReducer';
 import FormReporte from '../form/FormReporte';
-import { formatDateToInput } from '../../utils/Formateo';
 import Loader from '../layout/loader';
 import { Typography } from '@mui/material';
 
@@ -11,6 +11,12 @@ export type TransactionsReportProps = {
 	state: any;
 	dispatch: any;
 	handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+};
+
+const API_DATE_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+
+const toApiDate = (date: Date) => {
+	return dayjs(date).format(API_DATE_FORMAT);
 };
 
 const TransactionsReport: React.FC<TransactionsReportProps> = ({
@@ -43,6 +49,7 @@ const TransactionsReport: React.FC<TransactionsReportProps> = ({
 
 	const setQueryFiltro = () => {
 		const { clientes, vendedores, transacciones } = data;
+
 		dispatch({
 			type: reporteReducerTypes.SET_QUERY_FILTRO,
 			payload: [
@@ -61,7 +68,7 @@ const TransactionsReport: React.FC<TransactionsReportProps> = ({
 						valor: t.nombre,
 						id: t.codigo,
 					})),
-					valor: 'CI',
+					valor: '', // 🔥 eliminado CI fijo
 				},
 				{
 					nombre: 'Documento',
@@ -82,19 +89,14 @@ const TransactionsReport: React.FC<TransactionsReportProps> = ({
 					relacion: '>=',
 					columna: 'dat_fecha_ingreso',
 					valores: [],
-					valor: formatDateToInput({
-						date: new Date(),
-						setDay: 1,
-					}),
+					valor: toApiDate(new Date(new Date().setDate(1))),
 				},
 				{
 					nombre: 'y',
 					relacion: '<=',
 					columna: 'dat_fecha_ingreso',
 					valores: [],
-					valor: formatDateToInput({
-						date: new Date(),
-					}),
+					valor: toApiDate(new Date()),
 				},
 				{
 					nombre: 'Saldo',
@@ -136,7 +138,7 @@ const TransactionsReport: React.FC<TransactionsReportProps> = ({
 				},
 				{
 					nombre: 'Cliente',
-					relacion: '~~*',
+					relacion: 'contiene', // 🔥 reemplazo de ~~*
 					columna: 'n_cliente',
 					valores: [],
 					valor: '',
@@ -153,7 +155,7 @@ const TransactionsReport: React.FC<TransactionsReportProps> = ({
 				},
 				{
 					nombre: 'Vendedor',
-					relacion: '~~*',
+					relacion: 'contiene', // 🔥 reemplazo
 					columna: 'n_vendedor',
 					valores: [],
 					valor: '',
@@ -163,7 +165,7 @@ const TransactionsReport: React.FC<TransactionsReportProps> = ({
 	};
 
 	useEffect(() => {
-		if (!isLoading && !isError) {
+		if (!isLoading && !isError && data) {
 			setColumns();
 			setQueryFiltro();
 		}
@@ -174,13 +176,11 @@ const TransactionsReport: React.FC<TransactionsReportProps> = ({
 		return <Typography>Hubo un error en obtener los datos</Typography>;
 
 	return (
-		<>
-			<FormReporte
-				state={state}
-				dispatch={dispatch}
-				handleSubmit={handleSubmit}
-			/>
-		</>
+		<FormReporte
+			state={state}
+			dispatch={dispatch}
+			handleSubmit={handleSubmit}
+		/>
 	);
 };
 
