@@ -253,27 +253,32 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 			monto: formatCurrency(r.monto),
 		}));
 
+		// TOTAL DE COMPRAS CORRECTO Y AGREGADO AL RESUMEN
+		const totalComprasNumero = comprasRows.reduce((acc, row) => {
+			return acc + (Number(row.total) || 0);
+		}, 0);
+
+		const totalCompras = formatCurrency(totalComprasNumero);
+
+		reportRows.push({
+			nombre: 'Compras',
+			monto: totalCompras,
+		});
+
 		const { objetoSuma: totalTiposObj } = calcSumatoria(
 			{ monto: 'monto' },
 			{ monto: 'monto' },
-			reportRows
+			reportRows.filter((r) => r.nombre !== 'Compras')
 		);
 		const totalTipos = Object.values(totalTiposObj)[0];
 		reportRows.push({ monto: totalTipos, nombre: 'Total' });
-
-		const { objetoSuma: totalComprasObj } = calcSumatoria(
-			{ total: 'total' },
-			{ total: 'total' },
-			comprasRows
-		);
-		const totalCompras = Object.values(totalComprasObj)[0] || 'Q0.00';
 
 		const efectivo = reportRows.find(
 			(r) => r.nombre?.toLowerCase() === 'efectivo'
 		);
 
 		const efectivoNumero = efectivo ? getNumericValue(efectivo.monto) : 0;
-		const comprasNumero = getNumericValue(totalCompras);
+		const comprasNumero = totalComprasNumero;
 		const totalLiquidar = efectivoNumero - comprasNumero;
 
 		reportRows.push({
