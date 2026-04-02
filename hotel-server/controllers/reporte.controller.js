@@ -19,6 +19,28 @@ import {
 	writeHead,
 } from '../utils/reporte.utils.js';
 
+const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
+	if (value === null || value === undefined || String(value).trim() === '') {
+		return '';
+	}
+
+	let normalized = String(value).trim().replace('T', ' ').replace(/\s+/g, ' ');
+
+	if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+		return `${normalized} ${endOfDay ? '23:59:59' : '00:00:00'}`;
+	}
+
+	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}$/.test(normalized)) {
+		return `${normalized}:00`;
+	}
+
+	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+$/.test(normalized)) {
+		return normalized.replace(/\.\d+$/, '');
+	}
+
+	return normalized;
+};
+
 /**
  * Generar reporte de maestro detalle
  * @param {import('express').Request} req Request de la petición
@@ -129,36 +151,48 @@ export const masterDetail = async ({ query, body, user }, res) => {
 // Reemplazo de reporteTransaccion por reporte cierreTurno
 export const cierreTurno = async ({ query, body, user }, res) => {
 	try {
-		const fecha_apertura = query.fecha_apertura;
+		const fecha_apertura_raw = query.fecha_apertura;
 		const fecha_cierre_raw = query.fecha_cierre_turno;
 		const fecha_real_raw = query.fecha_cierre;
 
-		if (!fecha_apertura || !fecha_cierre_raw || !fecha_real_raw) {
+		if (!fecha_apertura_raw || !fecha_cierre_raw || !fecha_real_raw) {
 			throw new Error('Fechas requeridas para generar el reporte');
 		}
 
-		const fecha_cierre = `${fecha_cierre_raw}`.replace('T', ' ');
-		const fecha_real = fecha_real_raw;
+		const fecha_apertura = normalizeTimestamp(fecha_apertura_raw, {
+			endOfDay: false,
+		});
+		const fecha_cierre = normalizeTimestamp(fecha_cierre_raw, {
+			endOfDay: true,
+		});
+		const fecha_real = normalizeTimestamp(fecha_real_raw, {
+			endOfDay: true,
+		});
 
 		const consultaPrincipal = `
-            SELECT 
-                sum(monto) monto, 
-                nombre
-            FROM (
-                SELECT 
-                    sum(dr.monto) as monto, 
-                    tp.nombre 
-                FROM detalle_recibo dr 
-                INNER JOIN tipo_pago tp ON dr.tipo_pago = tp.codigo
-                WHERE dr.fecha::timestamp >= $1::timestamp 
-                    AND dr.fecha::timestamp <= $2::timestamp 
-                GROUP BY tp.nombre 
-                UNION 
-                SELECT 0 as monto, tp2.nombre 
-                FROM tipo_pago tp2 
-            ) rc
-            GROUP BY nombre
-            ORDER BY rc.nombre ASC`;
+			SELECT
+				sum(monto) AS monto,
+				nombre
+			FROM (
+				SELECT
+					sum(dr.monto) AS monto,
+					tp.nombre
+				FROM detalle_recibo dr
+				INNER JOIN tipo_pago tp
+					ON dr.tipo_pago = tp.codigo
+				WHERE dr.fecha::timestamp >= $1::timestamp
+					AND dr.fecha::timestamp <= $2::timestamp
+				GROUP BY tp.nombre
+
+				UNION
+
+				SELECT
+					0 AS monto,
+					tp2.nombre
+				FROM tipo_pago tp2
+			) rc
+			GROUP BY nombre
+			ORDER BY rc.nombre ASC`;
 
 		const { rows: tiposRows } = await getFromQueryCopy({
 			query: consultaPrincipal,
@@ -166,10 +200,10 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 		});
 
 		const consultaCompras = `
-            SELECT total
-            FROM pp_tranenc
-            WHERE fecha::timestamp >= $1::timestamp 
-                AND fecha::timestamp <= $2::timestamp`;
+			SELECT total
+			FROM pp_tranenc
+			WHERE fecha::timestamp >= $1::timestamp
+				AND fecha::timestamp <= $2::timestamp`;
 
 		const { rows: comprasRows } = await getFromQueryCopy({
 			query: consultaCompras,
@@ -181,15 +215,46 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 			columns: { nombre: 'Nombre', codigo: 'Código' },
 		});
 
+		const consultaDetalle = `
+			SELECT
+				COALESCE(NULLIF(dr.descripcion, ''), er.descripcion, et.referencia, '') AS descripcion,
+				TO_CHAR(dr.fecha, 'DD/MM/YYYY') AS fecha,
+				TO_CHAR(dr.fecha, 'HH24:MI:SS') AS hora,
+				COALESCE(fh.habitacion, '') AS habitacion,
+				tp.nombre AS tp_nombre,
+				dr.monto
+			FROM detalle_recibo dr
+			INNER JOIN tipo_pago tp
+				ON dr.tipo_pago = tp.codigo
+			LEFT JOIN encabezado_recibo er
+				ON dr.serie = er.serie
+				AND dr.tipo_transaccion = er.tipo_transaccion
+				AND dr.documento = er.documento
+			LEFT JOIN encabezado_transaccion et
+				ON dr.serie_fac = et.serie
+				AND dr.ti_tran_fac = et.tipo_transaccion
+				AND dr.documento_fac = et.documento
+			LEFT JOIN (
+				SELECT
+					dt.serie,
+					dt.tipo_transaccion,
+					dt.documento,
+					string_agg(DISTINCT h.nombre, ', ' ORDER BY h.nombre) AS habitacion
+				FROM detalle_transaccion dt
+				INNER JOIN habitacion h
+					ON dt.habitacion = h.codigo
+				GROUP BY dt.serie, dt.tipo_transaccion, dt.documento
+			) fh
+				ON dr.serie_fac = fh.serie
+				AND dr.ti_tran_fac = fh.tipo_transaccion
+				AND dr.documento_fac = fh.documento
+			WHERE tp.nombre = $1
+				AND dr.fecha::timestamp >= $2::timestamp
+				AND dr.fecha::timestamp <= $3::timestamp
+			ORDER BY dr.fecha ASC, dr.codigo ASC`;
+
 		const detallesPorTipo = await Promise.all(
 			tipos.rows.map(async (item) => {
-				const consultaDetalle = `
-                    SELECT DISTINCT *
-                    FROM v_rc_detalle
-                    WHERE tp_nombre = $1
-                        AND eng_fecha::timestamp >= $2::timestamp 
-                        AND eng_fecha::timestamp <= $3::timestamp`;
-
 				const { rows } = await getFromQueryCopy({
 					query: consultaDetalle,
 					valores: [item.nombre, fecha_apertura, fecha_cierre],
@@ -200,20 +265,21 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 		);
 
 		const shopResults = await getFromQuery({
-			sql: `SELECT 
-                CONCAT(pt.serie, '-', pt.tipo_transaccion, '-', pt.documento) AS documento,
-                TO_CHAR(pt.fecha, 'DD/MM/YYYY') AS str_fecha,
-                pt.fecha, 
-                pt.descripcion, 
-                p.nombre, 
-                p.telefono, 
-                p.nit,  
-                'Q.' || TO_CHAR(pt.iva, '999G999D99') AS iva, 
-                'Q.' || TO_CHAR(pt.total, '999G999D99') AS total  
-            FROM pp_tranenc pt 
-            INNER JOIN proveedor p ON pt.proveedor = p.codigo
-            WHERE pt.fecha::timestamp >= $1::timestamp 
-                AND pt.fecha::timestamp <= $2::timestamp`,
+			sql: `SELECT
+				CONCAT(pt.serie, '-', pt.tipo_transaccion, '-', pt.documento) AS documento,
+				TO_CHAR(pt.fecha, 'DD/MM/YYYY') AS str_fecha,
+				pt.fecha,
+				pt.descripcion,
+				p.nombre,
+				p.telefono,
+				p.nit,
+				'Q.' || TO_CHAR(pt.iva, '999G999D99') AS iva,
+				'Q.' || TO_CHAR(pt.total, '999G999D99') AS total
+			FROM pp_tranenc pt
+			INNER JOIN proveedor p
+				ON pt.proveedor = p.codigo
+			WHERE pt.fecha::timestamp >= $1::timestamp
+				AND pt.fecha::timestamp <= $2::timestamp`,
 			values: [fecha_apertura, fecha_cierre],
 		});
 
@@ -253,16 +319,13 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 			monto: formatCurrency(r.monto),
 		}));
 
-		// TOTAL DE COMPRAS CORRECTO Y AGREGADO AL RESUMEN
 		const totalComprasNumero = comprasRows.reduce((acc, row) => {
 			return acc + (Number(row.total) || 0);
 		}, 0);
 
-		const totalCompras = formatCurrency(totalComprasNumero);
-
 		reportRows.push({
 			nombre: 'Compras',
-			monto: totalCompras,
+			monto: formatCurrency(totalComprasNumero),
 		});
 
 		const { objetoSuma: totalTiposObj } = calcSumatoria(
@@ -270,16 +333,20 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 			{ monto: 'monto' },
 			reportRows.filter((r) => r.nombre !== 'Compras')
 		);
+
 		const totalTipos = Object.values(totalTiposObj)[0];
-		reportRows.push({ monto: totalTipos, nombre: 'Total' });
+
+		reportRows.push({
+			monto: totalTipos,
+			nombre: 'Total',
+		});
 
 		const efectivo = reportRows.find(
 			(r) => r.nombre?.toLowerCase() === 'efectivo'
 		);
 
 		const efectivoNumero = efectivo ? getNumericValue(efectivo.monto) : 0;
-		const comprasNumero = totalComprasNumero;
-		const totalLiquidar = efectivoNumero - comprasNumero;
+		const totalLiquidar = efectivoNumero - totalComprasNumero;
 
 		reportRows.push({
 			monto: formatCurrency(totalLiquidar),
@@ -363,25 +430,12 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 		});
 
 		const emptyDetailRow = getEmptyRow({
-			serie: 'Serie',
-			tipo_transaccion: 'Tipo',
-			documento: 'Documento',
-			serie_fac: 'Serie Fac.',
-			ti_tran_fac: 'Tipo Fac.',
-			documento_fac: 'Documento Fac.',
-			eng_fecha: '',
+			descripcion: 'Descripción',
 			fecha: 'Fecha',
 			hora: 'Hora',
-			habitacion: 'Habitacion',
-			abono: 'Abono',
-			descripcion: 'Descripción',
-			monto: 'Monto',
-			tipo_pago: 'Tipo de Pago',
+			habitacion: 'Habitación',
 			tp_nombre: 'Tipo de Pago',
-			cliente: 'Cliente',
-			c_nombre: 'Cliente',
-			cobrador: 'Cobrador',
-			v_nombre: 'Vendedor',
+			monto: 'Monto',
 		});
 
 		for (const { tipo, rows: detalleRows } of detallesPorTipo) {
