@@ -20,17 +20,14 @@ const normalizeDateTimeValue = (value: any) => {
 	const raw = String(value).trim();
 	if (!raw) return raw;
 
-	// datetime-local => SQL timestamp
 	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(raw)) {
 		return raw.replace('T', ' ');
 	}
 
-	// datetime-local sin segundos => agregar segundos
 	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) {
 		return `${raw.replace('T', ' ')}:00`;
 	}
 
-	// solo fecha
 	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
 		return `${raw} 00:00:00`;
 	}
