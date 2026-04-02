@@ -12,6 +12,52 @@ import FilasBox from '../../utils/FilasFlex';
 import { Content, ContentWithTitle } from '../card/Content';
 import { inputFormatValue } from '../../utils/Formateo';
 
+const formatDateTimeLocalInput = (value: string | null | undefined): string => {
+	if (!value) return '';
+
+	const raw = String(value).trim();
+	if (!raw) return '';
+
+	// Ya viene listo para datetime-local
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(raw)) {
+		return raw;
+	}
+
+	// Formato SQL -> formato input datetime-local
+	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(raw)) {
+		return raw.replace(' ', 'T');
+	}
+
+	// Solo fecha
+	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+		return `${raw}T00:00:00`;
+	}
+
+	// Fecha y hora sin segundos
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) {
+		return `${raw}:00`;
+	}
+
+	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}$/.test(raw)) {
+		return raw.replace(' ', 'T') + ':00';
+	}
+
+	return raw;
+};
+
+const isDateTimeField = (query: any) => {
+	const columna = String(query?.columna || '').toLowerCase();
+	const nombre = String(query?.nombre || '').toLowerCase();
+
+	return (
+		columna.includes('fecha') ||
+		columna.includes('date') ||
+		columna.includes('timestamp') ||
+		nombre.includes('fecha') ||
+		nombre.includes('hora')
+	);
+};
+
 const FormReporte = ({
 	state,
 	dispatch,
@@ -119,16 +165,13 @@ const FormReporte = ({
 														});
 													}}
 												/>
-											) : query.columna.includes('fecha') ? (
+											) : isDateTimeField(query) ? (
 												<TextField
 													sx={{ py: 1 }}
-													type='date'
+													type='datetime-local'
 													variant='standard'
 													color='primary'
-													value={inputFormatValue(
-														'date',
-														query.valor
-													)}
+													value={formatDateTimeLocalInput(query.valor)}
 													onChange={(e) => {
 														dispatch({
 															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
@@ -137,6 +180,9 @@ const FormReporte = ({
 																valor: e.target.value,
 															},
 														});
+													}}
+													inputProps={{
+														step: 1,
 													}}
 												/>
 											) : (
