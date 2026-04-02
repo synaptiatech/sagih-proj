@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+
 /**
  * Formatear fecha para insertar en postgresql yyyy-mm-dd hh:mm:ss (24h)
  * @param {string} date Fecha en formato dd-mm-yyyy hh:mm:ss (25/7/2023 00:22:00) a formatear
@@ -37,7 +38,6 @@ export const dateToPostgresTimestamp = (strDate) => {
  * @param {Date} date Fecha a formatear
  */
 export const formatDate = (date = new Date()) => {
-	// const str = date.toLocaleDateString('es-GT', { dateStyle: 'long' });
 	const str = new Intl.DateTimeFormat('es-GT', {
 		dateStyle: 'long',
 		timeZone: 'America/Guatemala',
@@ -70,4 +70,30 @@ export const formatTime = (date = new Date()) => {
 export const formatearFecha = (fecha, hora) => {
 	let date = dayjs(`${fecha} ${hora}`, 'YYYY-MM-DD HH:mm');
 	return date.format('YYYY-MM-DD HH:mm:ss');
+};
+
+/**
+ * Obtiene timestamp en hora local de Guatemala
+ * @returns {string} Fecha y hora en formato YYYY-MM-DD HH:mm:ss
+ */
+export const getGuatemalaTimestamp = () => {
+	const parts = new Intl.DateTimeFormat('sv-SE', {
+		timeZone: 'America/Guatemala',
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+		hour12: false,
+	}).formatToParts(new Date());
+
+	const values = {};
+	for (const part of parts) {
+		if (part.type !== 'literal') {
+			values[part.type] = part.value;
+		}
+	}
+
+	return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
 };
