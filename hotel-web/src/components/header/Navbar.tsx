@@ -68,11 +68,9 @@ export const Navbar = ({ setOpen }: DrawerProps) => {
 						<MenuIcon fontSize='small' />
 					</IconButton>
 					<img
-						src={`${BASE_URL}/${empresa.logo}`|| ''}
-						alt='Company logo'
-						style={{
-							height: 48,
-						}}
+					  src={`${BASE_URL}/archivos/${empresa.logo}`}
+					  alt='Company logo'
+					  style={{ height: 48 }}
 					/>
 					<Typography variant='subtitle1' color='text.primary'>
 						{empresa?.nombre || 'Nombre de la empresa'}
