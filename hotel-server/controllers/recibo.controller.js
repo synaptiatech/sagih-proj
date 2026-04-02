@@ -10,6 +10,7 @@ import {
 	updateQuery,
 } from '../db/querys.js';
 import { errorHandler } from '../utils/error.utils.js';
+import { getGuatemalaTimestamp } from '../utils/formatos.js';
 import { completarRcDet, completarRcEnc } from './transaccion.controller.js';
 
 /* **************************************************************
@@ -106,7 +107,12 @@ export const getAllDetalleRecibo = async ({ query, body }, res) => {
 
 export const createDetalleRecibo = async ({ body }, res) => {
 	try {
-		const results = await insertQuery(tablesName.RC_DETALLE, body);
+		const payload = {
+			...body,
+			fecha: body.fecha || getGuatemalaTimestamp(),
+		};
+
+		const results = await insertQuery(tablesName.RC_DETALLE, payload);
 		res.status(200).json(results);
 	} catch (error) {
 		errorHandler(res, error);
