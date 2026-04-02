@@ -1,14 +1,21 @@
-import React, { FormEvent, useEffect, useState } from 'react';
-import { URI } from '../../consts/Uri';
+import React, { FormEvent, useEffect } from 'react';
 import { reporteReducerTypes } from '../../hooks/reporteReducer';
-import { useFetch } from '../../hooks/useFetch';
 import FormReporte from '../form/FormReporte';
-import { formatDateToInput } from '../../utils/Formateo';
 
 export type PaymentsReportProps = {
 	state: any;
 	dispatch: any;
 	handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+};
+
+const pad2 = (value: number) => String(value).padStart(2, '0');
+
+const formatDateTimeLocal = (date: Date) => {
+	return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(
+		date.getDate()
+	)}T${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(
+		date.getSeconds()
+	)}`;
 };
 
 const PaymentsReport: React.FC<PaymentsReportProps> = ({
@@ -28,6 +35,14 @@ const PaymentsReport: React.FC<PaymentsReportProps> = ({
 	};
 
 	const setQueryFiltro = () => {
+		const now = new Date();
+		const firstDay = new Date(now);
+		firstDay.setDate(1);
+		firstDay.setHours(0, 0, 0, 0);
+
+		const endNow = new Date(now);
+		endNow.setMilliseconds(0);
+
 		dispatch({
 			type: reporteReducerTypes.SET_QUERY_FILTRO,
 			payload: [
@@ -50,19 +65,14 @@ const PaymentsReport: React.FC<PaymentsReportProps> = ({
 					relacion: '>=',
 					columna: 'det_fecha',
 					valores: [],
-					valor: formatDateToInput({
-						date: new Date(),
-						setDay: 1,
-					}),
+					valor: formatDateTimeLocal(firstDay),
 				},
 				{
 					nombre: 'y',
 					relacion: '<=',
 					columna: 'det_fecha',
 					valores: [],
-					valor: formatDateToInput({
-						date: new Date(),
-					}),
+					valor: formatDateTimeLocal(endNow),
 				},
 				{
 					nombre: 'Monto',
@@ -81,13 +91,11 @@ const PaymentsReport: React.FC<PaymentsReportProps> = ({
 	}, []);
 
 	return (
-		<>
-			<FormReporte
-				state={state}
-				dispatch={dispatch}
-				handleSubmit={handleSubmit}
-			/>
-		</>
+		<FormReporte
+			state={state}
+			dispatch={dispatch}
+			handleSubmit={handleSubmit}
+		/>
 	);
 };
 
