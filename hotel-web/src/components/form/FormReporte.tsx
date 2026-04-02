@@ -18,22 +18,18 @@ const formatDateTimeLocalInput = (value: string | null | undefined): string => {
 	const raw = String(value).trim();
 	if (!raw) return '';
 
-	// Ya viene listo para datetime-local
 	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(raw)) {
 		return raw;
 	}
 
-	// Formato SQL -> formato input datetime-local
 	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(raw)) {
 		return raw.replace(' ', 'T');
 	}
 
-	// Solo fecha
 	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
 		return `${raw}T00:00:00`;
 	}
 
-	// Fecha y hora sin segundos
 	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) {
 		return `${raw}:00`;
 	}
@@ -86,124 +82,140 @@ const FormReporte = ({
 										gap: 2,
 										gridTemplateColumns: {
 											xs: 'repeat(1, 1fr)',
-											sm: 'repeat(2, 2fr)',
-											md: 'repeat(3, 3fr)',
+											sm: 'repeat(2, 1fr)',
+											md: 'repeat(3, 1fr)',
 										},
 										mb: 2,
 									}}
 								>
-									{state.queryFiltro.map((query, index) => (
-										<Box
-											key={`${query.columna}-${index}`}
-											sx={{
-												display: 'grid',
-												gap: 2,
-												gridTemplateColumns: {
-													xs: '2fr 1fr',
-													sm: '2fr 1fr 3fr',
-												},
-												alignItems: 'center',
-											}}
-										>
-											<Typography sx={{ py: 1 }}>
-												{query.nombre}
-											</Typography>
+									{state.queryFiltro.map((query, index) => {
+										const isDateTime = isDateTimeField(query);
 
-											<Typography sx={{ py: 1 }}>
-												{query.relacion}
-											</Typography>
+										return (
+											<Box
+												key={`${query.columna}-${index}`}
+												sx={{
+													display: 'grid',
+													gap: 2,
+													gridTemplateColumns: isDateTime
+														? {
+																xs: '1fr',
+																sm: '140px 50px minmax(300px, 1fr)',
+														  }
+														: {
+																xs: '2fr 1fr',
+																sm: '2fr 1fr 3fr',
+														  },
+													alignItems: 'center',
+												}}
+											>
+												<Typography sx={{ py: 1 }}>
+													{query.nombre}
+												</Typography>
 
-											{query.valores.length ? (
-												<TextField
-													select
-													sx={{ py: 1 }}
-													label={query.nombre}
-													variant='standard'
-													color='primary'
-													value={query.valor ?? ''}
-													onChange={(e) => {
-														dispatch({
-															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
-															payload: {
-																index,
-																valor: e.target.value,
-															},
-														});
-													}}
-												>
-													<MenuItem value=''>
-														Todos
-													</MenuItem>
-													{query.valores.map((option: any, optionIndex: number) => (
-														<MenuItem
-															key={`${query.columna}-option-${option.id}-${optionIndex}`}
-															value={option.id}
-														>
-															{option.valor}
+												<Typography sx={{ py: 1 }}>
+													{query.relacion}
+												</Typography>
+
+												{query.valores.length ? (
+													<TextField
+														select
+														sx={{ py: 1 }}
+														label={query.nombre}
+														variant='standard'
+														color='primary'
+														value={query.valor ?? ''}
+														onChange={(e) => {
+															dispatch({
+																type: reporteReducerTypes.UPDATE_QUERY_VALOR,
+																payload: {
+																	index,
+																	valor: e.target.value,
+																},
+															});
+														}}
+													>
+														<MenuItem value=''>
+															Todos
 														</MenuItem>
-													))}
-												</TextField>
-											) : query.nombre
-													.toLowerCase()
-													.includes('mes') ? (
-												<TextField
-													sx={{ py: 1 }}
-													type='month'
-													variant='standard'
-													color='primary'
-													value={inputFormatValue(
-														'month',
-														query.valor
-													)}
-													onChange={(e) => {
-														dispatch({
-															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
-															payload: {
-																index,
-																valor: e.target.value,
+														{query.valores.map((option: any, optionIndex: number) => (
+															<MenuItem
+																key={`${query.columna}-option-${option.id}-${optionIndex}`}
+																value={option.id}
+															>
+																{option.valor}
+															</MenuItem>
+														))}
+													</TextField>
+												) : query.nombre
+														.toLowerCase()
+														.includes('mes') ? (
+													<TextField
+														sx={{ py: 1 }}
+														type='month'
+														variant='standard'
+														color='primary'
+														value={inputFormatValue(
+															'month',
+															query.valor
+														)}
+														onChange={(e) => {
+															dispatch({
+																type: reporteReducerTypes.UPDATE_QUERY_VALOR,
+																payload: {
+																	index,
+																	valor: e.target.value,
+																},
+															});
+														}}
+													/>
+												) : isDateTime ? (
+													<TextField
+														sx={{
+															py: 1,
+															minWidth: {
+																xs: '100%',
+																sm: 320,
+																md: 340,
 															},
-														});
-													}}
-												/>
-											) : isDateTimeField(query) ? (
-												<TextField
-													sx={{ py: 1 }}
-													type='datetime-local'
-													variant='standard'
-													color='primary'
-													value={formatDateTimeLocalInput(query.valor)}
-													onChange={(e) => {
-														dispatch({
-															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
-															payload: {
-																index,
-																valor: e.target.value,
-															},
-														});
-													}}
-													inputProps={{
-														step: 1,
-													}}
-												/>
-											) : (
-												<TextField
-													sx={{ py: 1 }}
-													variant='standard'
-													color='primary'
-													value={query.valor ?? ''}
-													onChange={(e) => {
-														dispatch({
-															type: reporteReducerTypes.UPDATE_QUERY_VALOR,
-															payload: {
-																index,
-																valor: e.target.value,
-															},
-														});
-													}}
-												/>
-											)}
-										</Box>
-									))}
+														}}
+														type='datetime-local'
+														variant='standard'
+														color='primary'
+														value={formatDateTimeLocalInput(query.valor)}
+														onChange={(e) => {
+															dispatch({
+																type: reporteReducerTypes.UPDATE_QUERY_VALOR,
+																payload: {
+																	index,
+																	valor: e.target.value,
+																},
+															});
+														}}
+														inputProps={{
+															step: 1,
+														}}
+													/>
+												) : (
+													<TextField
+														sx={{ py: 1 }}
+														variant='standard'
+														color='primary'
+														value={query.valor ?? ''}
+														onChange={(e) => {
+															dispatch({
+																type: reporteReducerTypes.UPDATE_QUERY_VALOR,
+																payload: {
+																	index,
+																	valor: e.target.value,
+																},
+															});
+														}}
+													/>
+												)}
+											</Box>
+										);
+									})}
 								</Box>
 
 								<Box>
