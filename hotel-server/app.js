@@ -46,6 +46,7 @@ app.use(
 );
 
 app.use(express.static('storage'));
+app.use('/archivos', express.static('archivos'));
 
 app.get('/', (_req, res) => {
   res.status(200).json({
