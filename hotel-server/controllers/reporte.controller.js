@@ -128,114 +128,81 @@ export const masterDetail = async ({ query, body, user }, res) => {
 
 // Reemplazo de reporteTransaccion por reporte cierreTurno
 export const cierreTurno = async ({ query, body, user }, res) => {
-    try {
-        const fecha_apertura_raw = query.fecha_apertura;
-        const fecha_cierre_raw = query.fecha_cierre_turno;
-        const fecha_real_raw = query.fecha_cierre;
+	try {
+		const fecha_apertura = query.fecha_apertura;
+		const fecha_cierre_raw = query.fecha_cierre_turno;
+		const fecha_real_raw = query.fecha_cierre;
 
-        if (!fecha_apertura_raw || !fecha_cierre_raw || !fecha_real_raw) {
-            throw new Error('Fechas requeridas para generar el reporte');
-        }
+		if (!fecha_apertura || !fecha_cierre_raw || !fecha_real_raw) {
+			throw new Error('Fechas requeridas para generar el reporte');
+		}
 
-        // Normalizar fechas: asegurar formato timestamp completo
-        const normalizeTimestamp = (value) => {
-            if (!value) return null;
-            // Si ya tiene espacio, asumimos que está en formato correcto
-            if (value.includes(' ')) return value;
-            // Si tiene T, reemplazar
-            if (value.includes('T')) return value.replace('T', ' ');
-            // Si es solo fecha, agregar hora 00:00:00 o 23:59:59 según corresponda
-            return value;
-        };
+		const fecha_cierre = `${fecha_cierre_raw}`.replace('T', ' ');
+		const fecha_real = fecha_real_raw;
 
-        // Para fecha inicio: usar desde las 00:00:00
-        let fecha_apertura = normalizeTimestamp(fecha_apertura_raw);
-        if (fecha_apertura && !fecha_apertura.includes(' ')) {
-            fecha_apertura = `${fecha_apertura} 00:00:00`;
-        }
-
-        // Para fecha cierre: usar hasta las 23:59:59 para incluir todo el día
-        let fecha_cierre = normalizeTimestamp(fecha_cierre_raw);
-        if (fecha_cierre && !fecha_cierre.includes(' ')) {
-            fecha_cierre = `${fecha_cierre} 23:59:59`;
-        }
-
-        const fecha_real = fecha_real_raw;
-
-        console.log('Rango de fechas:', { fecha_apertura, fecha_cierre, fecha_real });
-
-        // CONSULTA PRINCIPAL - CORREGIDA
-        const consultaPrincipal = `
+		const consultaPrincipal = `
             SELECT 
-                COALESCE(SUM(monto), 0) as monto, 
+                sum(monto) monto, 
                 nombre
             FROM (
                 SELECT 
-                    COALESCE(SUM(dr.monto), 0) as monto, 
+                    sum(dr.monto) as monto, 
                     tp.nombre 
                 FROM detalle_recibo dr 
                 INNER JOIN tipo_pago tp ON dr.tipo_pago = tp.codigo
-                WHERE dr.fecha >= $1::timestamp 
-                    AND dr.fecha <= $2::timestamp 
-                    AND dr.ti_tran_fac = 'CI'
+                WHERE dr.fecha::timestamp >= $1::timestamp 
+                    AND dr.fecha::timestamp <= $2::timestamp 
                 GROUP BY tp.nombre 
-                UNION ALL
+                UNION 
                 SELECT 0 as monto, tp2.nombre 
                 FROM tipo_pago tp2 
             ) rc
             GROUP BY nombre
             ORDER BY rc.nombre ASC`;
 
-        const { rows: tiposRows } = await getFromQueryCopy({
-            query: consultaPrincipal,
-            valores: [fecha_apertura, fecha_cierre],
-        });
+		const { rows: tiposRows } = await getFromQueryCopy({
+			query: consultaPrincipal,
+			valores: [fecha_apertura, fecha_cierre],
+		});
 
-        // CONSULTA COMPRAS - CORREGIDA
-        const consultaCompras = `
-            SELECT COALESCE(SUM(total), 0) as total
+		const consultaCompras = `
+            SELECT total
             FROM pp_tranenc
-            WHERE fecha >= $1::timestamp 
-                AND fecha <= $2::timestamp`;
+            WHERE fecha::timestamp >= $1::timestamp 
+                AND fecha::timestamp <= $2::timestamp`;
 
-        const { rows: comprasRows } = await getFromQueryCopy({
-            query: consultaCompras,
-            valores: [fecha_apertura, fecha_cierre],
-        });
+		const { rows: comprasRows } = await getFromQueryCopy({
+			query: consultaCompras,
+			valores: [fecha_apertura, fecha_cierre],
+		});
 
-        const tipos = await getQueryMethod({
-            table: 'tipo_pago',
-            columns: { nombre: 'Nombre', codigo: 'Código' },
-        });
+		const tipos = await getQueryMethod({
+			table: 'tipo_pago',
+			columns: { nombre: 'Nombre', codigo: 'Código' },
+		});
 
-        // CONSULTA DETALLE POR TIPO - CORREGIDA
-        const detallesPorTipo = await Promise.all(
-            tipos.rows.map(async (item) => {
-                // Verificar qué columna de fecha existe en v_rc_detalle
-                // Usar fecha en lugar de eng_fecha si es necesario
-                const consultaDetalle = `
-                    SELECT *
+		const detallesPorTipo = await Promise.all(
+			tipos.rows.map(async (item) => {
+				const consultaDetalle = `
+                    SELECT DISTINCT *
                     FROM v_rc_detalle
                     WHERE tp_nombre = $1
-                        AND fecha >= $2::timestamp 
-                        AND fecha <= $3::timestamp
-                    ORDER BY fecha DESC`;
+                        AND eng_fecha::timestamp >= $2::timestamp 
+                        AND eng_fecha::timestamp <= $3::timestamp`;
 
-                const { rows } = await getFromQueryCopy({
-                    query: consultaDetalle,
-                    valores: [item.nombre, fecha_apertura, fecha_cierre],
-                });
+				const { rows } = await getFromQueryCopy({
+					query: consultaDetalle,
+					valores: [item.nombre, fecha_apertura, fecha_cierre],
+				});
 
-                console.log(`Tipo ${item.nombre}: ${rows.length} registros encontrados`);
-                return { tipo: item.nombre, rows };
-            })
-        );
+				return { tipo: item.nombre, rows };
+			})
+		);
 
-        // CONSULTA COMPRAS DETALLE - CORREGIDA
-        const shopResults = await getFromQuery({
-            sql: `SELECT 
+		const shopResults = await getFromQuery({
+			sql: `SELECT 
                 CONCAT(pt.serie, '-', pt.tipo_transaccion, '-', pt.documento) AS documento,
-                TO_CHAR(pt.fecha, 'DD/MM/YYYY HH24:MI:SS') AS str_fecha,
+                TO_CHAR(pt.fecha, 'DD/MM/YYYY') AS str_fecha,
                 pt.fecha, 
                 pt.descripcion, 
                 p.nombre, 
@@ -245,370 +212,356 @@ export const cierreTurno = async ({ query, body, user }, res) => {
                 'Q.' || TO_CHAR(pt.total, '999G999D99') AS total  
             FROM pp_tranenc pt 
             INNER JOIN proveedor p ON pt.proveedor = p.codigo
-            WHERE pt.fecha >= $1::timestamp 
-                AND pt.fecha <= $2::timestamp
-            ORDER BY pt.fecha DESC`,
-            values: [fecha_apertura, fecha_cierre],
-        });
+            WHERE pt.fecha::timestamp >= $1::timestamp 
+                AND pt.fecha::timestamp <= $2::timestamp`,
+			values: [fecha_apertura, fecha_cierre],
+		});
 
-        const columns = {
-            descripcion: 'DESCRIPCION',
-            fecha: 'FECHA',
-            hora: 'HORA',
-            habitacion: 'HAB.',
-            tp_nombre: 'TIPO DE PAGO',
-            monto: 'MONTO',
-        };
+		const columns = {
+			descripcion: 'DESCRIPCION',
+			fecha: 'FECHA',
+			hora: 'HORA',
+			habitacion: 'HAB.',
+			tp_nombre: 'TIPO DE PAGO',
+			monto: 'MONTO',
+		};
 
-        const formatCurrency = (value) => {
-            const numericValue = Number(value) || 0;
-            return Intl.NumberFormat('es-GT', {
-                style: 'currency',
-                currency: 'GTQ',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            }).format(numericValue);
-        };
+		const formatCurrency = (value) => {
+			const numericValue = Number(value) || 0;
+			return Intl.NumberFormat('es-GT', {
+				style: 'currency',
+				currency: 'GTQ',
+			}).format(numericValue);
+		};
 
-        const getNumericValue = (currencyString) => {
-            if (currencyString === null || currencyString === undefined) {
-                return 0;
-            }
-            // Limpiar más robustamente
-            const cleaned = String(currencyString)
-                .replace(/[Q.\s]/g, '')
-                .replace(/,/g, '')
-                .trim();
-            const num = parseFloat(cleaned);
-            return isNaN(num) ? 0 : num;
-        };
+		const getNumericValue = (currencyString) => {
+			if (currencyString === null || currencyString === undefined) {
+				return 0;
+			}
 
-        // Construir filas de reporte con valores numéricos para cálculos
-        const reportRowsRaw = tiposRows.map((r) => ({
-            nombre: r.nombre,
-            monto_numero: Number(r.monto) || 0,
-            monto: formatCurrency(r.monto),
-        }));
+			const cleaned = String(currencyString)
+				.replace('Q.', '')
+				.replace('Q', '')
+				.replace(/,/g, '')
+				.trim();
 
-        const totalComprasNumero = comprasRows.length > 0 ? (Number(comprasRows[0].total) || 0) : 0;
-        const totalCompras = formatCurrency(totalComprasNumero);
+			return Number(cleaned) || 0;
+		};
 
-        reportRowsRaw.push({
-            nombre: 'Compras',
-            monto_numero: totalComprasNumero,
-            monto: totalCompras,
-        });
+		const reportRows = tiposRows.map((r) => ({
+			nombre: r.nombre,
+			monto: formatCurrency(r.monto),
+		}));
 
-        // Calcular total de tipos (excluyendo Compras)
-        const totalTiposNumero = reportRowsRaw
-            .filter((r) => r.nombre !== 'Compras')
-            .reduce((acc, r) => acc + r.monto_numero, 0);
-        
-        reportRowsRaw.push({
-            nombre: 'Total',
-            monto_numero: totalTiposNumero,
-            monto: formatCurrency(totalTiposNumero),
-        });
+		// TOTAL DE COMPRAS CORRECTO Y AGREGADO AL RESUMEN
+		const totalComprasNumero = comprasRows.reduce((acc, row) => {
+			return acc + (Number(row.total) || 0);
+		}, 0);
 
-        const efectivo = reportRowsRaw.find(
-            (r) => r.nombre?.toLowerCase() === 'efectivo'
-        );
+		const totalCompras = formatCurrency(totalComprasNumero);
 
-        const efectivoNumero = efectivo ? efectivo.monto_numero : 0;
-        const totalLiquidar = efectivoNumero - totalComprasNumero;
+		reportRows.push({
+			nombre: 'Compras',
+			monto: totalCompras,
+		});
 
-        reportRowsRaw.push({
-            nombre: 'TOTAL A LIQUIDAR (Efectivo - Compras)',
-            monto_numero: totalLiquidar,
-            monto: formatCurrency(totalLiquidar),
-        });
+		const { objetoSuma: totalTiposObj } = calcSumatoria(
+			{ monto: 'monto' },
+			{ monto: 'monto' },
+			reportRows.filter((r) => r.nombre !== 'Compras')
+		);
+		const totalTipos = Object.values(totalTiposObj)[0];
+		reportRows.push({ monto: totalTipos, nombre: 'Total' });
 
-        // Usar reportRowsRaw para la tabla, pero mostrar el monto formateado
-        const reportRows = reportRowsRaw.map(r => ({
-            nombre: r.nombre,
-            monto: r.monto
-        }));
+		const efectivo = reportRows.find(
+			(r) => r.nombre?.toLowerCase() === 'efectivo'
+		);
 
-        const stream = writeHead('CIERRE DE TURNO', res);
-        const doc = createDocument(
-            Object.keys({ tipo: 'Tipo', monto: 'Monto' }).length
-        );
+		const efectivoNumero = efectivo ? getNumericValue(efectivo.monto) : 0;
+		const comprasNumero = totalComprasNumero;
+		const totalLiquidar = efectivoNumero - comprasNumero;
 
-        let hasError = false;
+		reportRows.push({
+			monto: formatCurrency(totalLiquidar),
+			nombre: 'TOTAL A LIQUIDAR (Efectivo - Compras)',
+		});
 
-        doc.on('data', (data) => {
-            if (!hasError && stream && !stream.writableEnded) {
-                stream.write(data);
-            }
-        });
+		const stream = writeHead('CIERRE DE TURNO', res);
+		const doc = createDocument(
+			Object.keys({ tipo: 'Tipo', monto: 'Monto' }).length
+		);
 
-        doc.on('error', (err) => {
-            hasError = true;
-            console.error('PDF generation error:', err);
-            if (stream && !stream.writableEnded) {
-                stream.end();
-            }
-        });
+		let hasError = false;
 
-        doc.on('end', () => {
-            if (stream && !stream.writableEnded && !hasError) {
-                stream.end();
-            }
-        });
+		doc.on('data', (data) => {
+			if (!hasError && stream && !stream.writableEnded) {
+				stream.write(data);
+			}
+		});
 
-        await setupLetterhead(doc, user.usuario, 'CIERRE DE TURNO');
+		doc.on('error', (err) => {
+			hasError = true;
+			console.error('PDF generation error:', err);
+			if (stream && !stream.writableEnded) {
+				stream.end();
+			}
+		});
 
-        // Tabla de fechas
-        doc.addTable(
-            [
-                {
-                    key: 'fecha_apertura',
-                    label: 'Fecha inicio',
-                    align: 'center',
-                },
-                {
-                    key: 'fecha_cierre',
-                    label: 'Fecha cierre',
-                    align: 'center',
-                },
-                { key: 'fecha_real', label: 'Fecha real', align: 'center' },
-            ],
-            [
-                {
-                    fecha_apertura: switchDateToEng(fecha_apertura),
-                    fecha_real: switchDateToEng(fecha_real),
-                    fecha_cierre: switchDateToEng(fecha_cierre),
-                },
-            ],
-            {
-                fontSize: 12,
-                width: 'fill_body',
-                headBackground: '#f2f2f2',
-                headStyles: {
-                    fillColor: '#f2f2f2',
-                    textColor: '#000',
-                    lineColor: '#000',
-                },
-            }
-        );
+		doc.on('end', () => {
+			if (stream && !stream.writableEnded && !hasError) {
+				stream.end();
+			}
+		});
 
-        // Tabla resumen
-        const detailHeaders = Object.entries({
-            nombre: 'Tipo',
-            monto: 'Monto',
-        }).map(([key, label]) => ({
-            key,
-            label,
-            align: key === 'monto' ? 'right' : 'left',
-        }));
+		await setupLetterhead(doc, user.usuario, 'CIERRE DE TURNO');
 
-        doc.addTable(detailHeaders, reportRows, {
-            fontSize: 12,
-            width: 'fill_body',
-        });
+		doc.addTable(
+			[
+				{
+					key: 'fecha_apertura',
+					label: 'Fecha inicio',
+					align: 'center',
+				},
+				{
+					key: 'fecha_cierre',
+					label: 'Fecha cierre',
+					align: 'center',
+				},
+				{ key: 'fecha_real', label: 'Fecha real', align: 'center' },
+			],
+			[
+				{
+					fecha_apertura: switchDateToEng(fecha_apertura),
+					fecha_real: switchDateToEng(fecha_real),
+					fecha_cierre: switchDateToEng(fecha_cierre),
+				},
+			],
+			{
+				fontSize: 12,
+				width: 'fill_body',
+				headBackground: '#f2f2f2',
+				headStyles: {
+					fillColor: '#f2f2f2',
+					textColor: '#000',
+					lineColor: '#000',
+				},
+			}
+		);
 
-        const emptyDetailRow = getEmptyRow({
-            serie: 'Serie',
-            tipo_transaccion: 'Tipo',
-            documento: 'Documento',
-            serie_fac: 'Serie Fac.',
-            ti_tran_fac: 'Tipo Fac.',
-            documento_fac: 'Documento Fac.',
-            eng_fecha: '',
-            fecha: 'Fecha',
-            hora: 'Hora',
-            habitacion: 'Habitacion',
-            abono: 'Abono',
-            descripcion: 'Descripción',
-            monto: 'Monto',
-            tipo_pago: 'Tipo de Pago',
-            tp_nombre: 'Tipo de Pago',
-            cliente: 'Cliente',
-            c_nombre: 'Cliente',
-            cobrador: 'Cobrador',
-            v_nombre: 'Vendedor',
-        });
+		const detailHeaders = Object.entries({
+			nombre: 'Tipo',
+			monto: 'Monto',
+		}).map(([key, label]) => ({
+			key,
+			label,
+			align: getCellsAlign(key),
+		}));
 
-        // Detalle por tipo de pago
-        for (const { tipo, rows: detalleRows } of detallesPorTipo) {
-            const rowsToDisplay =
-                detalleRows.length === 0 ? [emptyDetailRow] : detalleRows;
+		doc.addTable(detailHeaders, reportRows, {
+			fontSize: 12,
+			width: 'fill_body',
+		});
 
-            doc.addTable(
-                [{ key: 'tp_nombre', label: '', align: 'left' }],
-                [{ tp_nombre: tipo }],
-                {
-                    fontSize: 14,
-                    headBackground: '#ffffff',
-                    border: { size: 0, color: '#ffffff' },
-                    cellsFont: 'Helvetica-Bold',
-                }
-            );
+		const emptyDetailRow = getEmptyRow({
+			serie: 'Serie',
+			tipo_transaccion: 'Tipo',
+			documento: 'Documento',
+			serie_fac: 'Serie Fac.',
+			ti_tran_fac: 'Tipo Fac.',
+			documento_fac: 'Documento Fac.',
+			eng_fecha: '',
+			fecha: 'Fecha',
+			hora: 'Hora',
+			habitacion: 'Habitacion',
+			abono: 'Abono',
+			descripcion: 'Descripción',
+			monto: 'Monto',
+			tipo_pago: 'Tipo de Pago',
+			tp_nombre: 'Tipo de Pago',
+			cliente: 'Cliente',
+			c_nombre: 'Cliente',
+			cobrador: 'Cobrador',
+			v_nombre: 'Vendedor',
+		});
 
-            const detallesHeaders = Object.entries(columns).map(([key, label]) => ({
-                key,
-                label,
-                align: getCellsAlign(key),
-            }));
+		for (const { tipo, rows: detalleRows } of detallesPorTipo) {
+			const rowsToDisplay =
+				detalleRows.length === 0 ? [emptyDetailRow] : detalleRows;
 
-            doc.addTable(detallesHeaders, rowsToDisplay, {
-                fontSize: 12,
-                width: 'fill_body',
-            });
+			doc.addTable(
+				[{ key: 'tp_nombre', label: '', align: 'right' }],
+				[{ tp_nombre: tipo }],
+				{
+					fontSize: 14,
+					headBackground: '#ffffff',
+					border: { size: 0, color: '#ffffff' },
+					cellsFont: 'Helvetica-Bold',
+				}
+			);
 
-            const { cabecera, objetoSuma } = calcSumatoria(
-                columns,
-                { monto: 'monto' },
-                rowsToDisplay
-            );
+			const detallesHeaders = Object.entries(columns).map(([key, label]) => ({
+				key,
+				label,
+				align: getCellsAlign(key),
+			}));
 
-            cabecera.forEach((el) => {
-                el.label = '';
-            });
+			doc.addTable(detallesHeaders, rowsToDisplay, {
+				fontSize: 12,
+				width: 'fill_body',
+			});
 
-            doc.addTable(cabecera, [objetoSuma], {
-                fontSize: 12,
-                border: { size: 0, color: '#fff' },
-                width: 'fill_body',
-                headBackground: '#f2f2f2',
-                headColor: '#f2f2f2',
-                headHeight: 0.5,
-                cellsFont: 'Helvetica-Bold',
-            });
-        }
+			const { cabecera, objetoSuma } = calcSumatoria(
+				columns,
+				{ monto: 'monto' },
+				rowsToDisplay
+			);
 
-        // Sección de compras
-        const emptyShopRow = getEmptyRow({
-            documento: 'Documento',
-            str_fecha: 'Fecha',
-            descripcion: 'Descripción',
-            nombre: 'Proveedor',
-            telefono: 'Teléfono',
-            nit: 'NIT',
-            iva: 'IVA',
-            total: 'Total',
-        });
+			cabecera.forEach((el) => {
+				el.label = '';
+			});
 
-        const shopRowsToDisplay =
-            shopResults.length === 0 ? [emptyShopRow] : shopResults;
+			doc.addTable(cabecera, [objetoSuma], {
+				fontSize: 12,
+				border: { size: 0, color: '#fff' },
+				width: 'fill_body',
+				headBackground: '#f2f2f2',
+				headColor: '#f2f2f2',
+				headHeight: 0.5,
+				cellsFont: 'Helvetica-Bold',
+			});
+		}
 
-        doc.addTable(
-            [{ key: 'pp_tranenc', label: '', align: 'left' }],
-            [{ pp_tranenc: 'Compras' }],
-            {
-                fontSize: 14,
-                headBackground: '#ffffff',
-                border: { size: 0, color: '#ffffff' },
-                cellsFont: 'Helvetica-Bold',
-            }
-        );
+		const emptyShopRow = getEmptyRow({
+			documento: 'Documento',
+			str_fecha: 'Fecha',
+			descripcion: 'Descripción',
+			nombre: 'Proveedor',
+			telefono: 'Teléfono',
+			nit: 'NIT',
+			iva: 'IVA',
+			total: 'Total',
+		});
 
-        doc.addTable(
-            [
-                { key: 'documento', label: 'Documento', align: 'left' },
-                { key: 'str_fecha', label: 'Fecha', align: 'left' },
-                { key: 'descripcion', label: 'Descripción', align: 'left' },
-                { key: 'nombre', label: 'Proveedor', align: 'left' },
-                { key: 'telefono', label: 'Teléfono', align: 'left' },
-                { key: 'nit', label: 'NIT', align: 'left' },
-                { key: 'iva', label: 'IVA', align: 'right' },
-                { key: 'total', label: 'Total', align: 'right' },
-            ],
-            shopRowsToDisplay,
-            { fontSize: 12, width: 'fill_body' }
-        );
+		const shopRowsToDisplay =
+			shopResults.length === 0 ? [emptyShopRow] : shopResults;
 
-        const { cabecera: comprasCabecera, objetoSuma: comprasTotal } =
-            calcSumatoria(
-                {
-                    documento: 'documento',
-                    str_fecha: 'str_fecha',
-                    descripcion: 'descripcion',
-                    nombre: 'nombre',
-                    telefono: 'telefono',
-                    nit: 'nit',
-                    iva: 'iva',
-                    total: 'total',
-                },
-                { total: 'total' },
-                shopRowsToDisplay
-            );
+		doc.addTable(
+			[{ key: 'pp_tranenc', label: '', align: 'left' }],
+			[{ pp_tranenc: 'Compras' }],
+			{
+				fontSize: 14,
+				headBackground: '#ffffff',
+				border: { size: 0, color: '#ffffff' },
+				cellsFont: 'Helvetica-Bold',
+			}
+		);
 
-        comprasCabecera.forEach((el) => {
-            el.label = '';
-        });
+		doc.addTable(
+			[
+				{ key: 'documento', label: 'Documento', align: 'left' },
+				{ key: 'str_fecha', label: 'Fecha', align: 'left' },
+				{ key: 'descripcion', label: 'Descripción', align: 'left' },
+				{ key: 'nombre', label: 'Proveedor', align: 'left' },
+				{ key: 'telefono', label: 'Teléfono', align: 'left' },
+				{ key: 'nit', label: 'NIT', align: 'left' },
+				{ key: 'iva', label: 'IVA', align: 'right' },
+				{ key: 'total', label: 'Total', align: 'right' },
+			],
+			shopRowsToDisplay,
+			{ fontSize: 12, width: 'fill_body' }
+		);
 
-        doc.addTable(comprasCabecera, [comprasTotal], {
-            fontSize: 12,
-            border: { size: 0, color: '#fff' },
-            width: 'fill_body',
-            headBackground: '#f2f2f2',
-            headColor: '#f2f2f2',
-            headHeight: 0.5,
-            cellsFont: 'Helvetica-Bold',
-        });
+		const { cabecera: comprasCabecera, objetoSuma: comprasTotal } =
+			calcSumatoria(
+				{
+					documento: 'documento',
+					str_fecha: 'str_fecha',
+					descripcion: 'descripcion',
+					nombre: 'nombre',
+					telefono: 'telefono',
+					nit: 'nit',
+					iva: 'iva',
+					total: 'total',
+				},
+				{ total: 'total' },
+				shopRowsToDisplay
+			);
 
-        doc.render();
-        doc.moveDown(2);
+		comprasCabecera.forEach((el) => {
+			el.label = '';
+		});
 
-        doc.text('___________________________', 100, doc.y, {
-            width: 200,
-            align: 'center',
-        });
-        doc.moveUp();
-        doc.text('___________________________', 300, doc.y, {
-            width: 200,
-            align: 'center',
-        });
+		doc.addTable(comprasCabecera, [comprasTotal], {
+			fontSize: 12,
+			border: { size: 0, color: '#fff' },
+			width: 'fill_body',
+			headBackground: '#f2f2f2',
+			headColor: '#f2f2f2',
+			headHeight: 0.5,
+			cellsFont: 'Helvetica-Bold',
+		});
 
-        doc.moveDown();
-        doc.text(user?.usuario || 'Usuario', 100, doc.y, {
-            width: 200,
-            align: 'center',
-        });
-        doc.moveUp();
-        doc.text('________________', 300, doc.y, {
-            width: 200,
-            align: 'center',
-        });
+		doc.render();
+		doc.moveDown(2);
 
-        doc.text('Responsable', 100, doc.y, {
-            width: 200,
-            align: 'center',
-        });
-        doc.moveUp();
-        doc.text('Recibido', 300, doc.y, {
-            width: 200,
-            align: 'center',
-        });
+		doc.text('___________________________', 100, doc.y, {
+			width: 200,
+			align: 'center',
+		});
+		doc.moveUp();
+		doc.text('___________________________', 300, doc.y, {
+			width: 200,
+			align: 'center',
+		});
 
-        doc.moveDown();
-        doc.text('Observaciones:', 50, doc.y, { align: 'left' });
+		doc.moveDown();
+		doc.text(user?.usuario || 'Usuario', 100, doc.y, {
+			width: 200,
+			align: 'center',
+		});
+		doc.moveUp();
+		doc.text('________________', 300, doc.y, {
+			width: 200,
+			align: 'center',
+		});
 
-        const line =
-            '_________________________________________________________________________________________';
-        for (let i = 0; i < 4; i++) {
-            doc.moveDown().text(line, 50, doc.y, {
-                width: 500,
-                align: 'center',
-            });
-        }
+		doc.text('Responsable', 100, doc.y, {
+			width: 200,
+			align: 'center',
+		});
+		doc.moveUp();
+		doc.text('Recibido', 300, doc.y, {
+			width: 200,
+			align: 'center',
+		});
 
-        setupPagesNumber(doc);
-        doc.flushPages();
-        doc.end();
-    } catch (error) {
-        console.error('❌ Error en cierreTurno:', error);
+		doc.moveDown();
+		doc.text('Observaciones:', 50, doc.y, { align: 'left' });
 
-        if (!res.headersSent) {
-            return errorHandler(res, error);
-        }
+		const line =
+			'_________________________________________________________________________________________';
+		for (let i = 0; i < 4; i++) {
+			doc.moveDown().text(line, 50, doc.y, {
+				width: 500,
+				align: 'center',
+			});
+		}
 
-        console.error('Headers ya enviados, no se puede enviar error');
-        if (!res.writableEnded) {
-            res.end();
-        }
-    }
+		setupPagesNumber(doc);
+		doc.flushPages();
+		doc.end();
+	} catch (error) {
+		console.error('❌ Error en cierreTurno:', error);
+
+		if (!res.headersSent) {
+			return errorHandler(res, error);
+		}
+
+		console.error('Headers ya enviados, no se puede enviar error');
+		if (!res.writableEnded) {
+			res.end();
+		}
+	}
 };
 
 // cambios para generar reporte con pdfkit y mostrar sumatoria
