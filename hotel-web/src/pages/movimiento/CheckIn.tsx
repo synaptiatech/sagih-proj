@@ -39,31 +39,14 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 	const [openModal, setOpenModal] = useState(false);
 	const [loading, setLoading] = useState(false);
 
-	const { data: cierre } = useFetch({
-		path: `${URI.cierre}/one`,
-		table: 'cierre',
-		columns: {
-			fecha_cierre: 'fecha_cierre',
-		},
-	});
-
 	const { data, error, isLoading, refetch } = useFetch({
 		path: `${URI.transaccion}/all`,
 		table: 'v_transaccion',
 		pageNumber: state.currentPage,
 		pageSize: state.limit,
 		query: { tipo_transaccion: 'CI', estado: stateTran },
-		sort: { fecha_ingreso: 'ASC' },
+		sort: { serie: 'ASC' },
 		q: state.q,
-		customWhere: cierre?.fecha_cierre
-			? [
-					{
-						column: 'fecha_ingreso',
-						operator: '>=',
-						value: cierre.fecha_cierre,
-					},
-			  ]
-			: [],
 	});
 
 	const handleChange = (event: ChangeEvent<unknown>, p: number) => {
