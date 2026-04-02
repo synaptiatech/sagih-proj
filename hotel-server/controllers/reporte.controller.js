@@ -36,27 +36,22 @@ const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
 		.replace(/\s+/g, ' ')
 		.trim();
 
-	// YYYY-MM-DD
 	if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
 		return `${normalized} ${endOfDay ? '23:59:59' : '00:00:00'}`;
 	}
 
-	// YYYY-MM-DD HH:MM
 	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}$/.test(normalized)) {
 		return `${normalized}:00`;
 	}
 
-	// YYYY-MM-DD HH:MM:SS.mmmmmm
 	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+$/.test(normalized)) {
 		return normalized.replace(/\.\d+$/, '');
 	}
 
-	// YYYY-MM-DD HH:MM:SS
 	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(normalized)) {
 		return normalized;
 	}
 
-	// Caso raro: YYYY-MM-DD HH AM:SS   -> minutos faltantes, segundos presentes
 	let match = normalized.match(
 		/^(\d{4}-\d{2}-\d{2})\s(\d{1,2})\s(AM|PM):(\d{1,2})$/i
 	);
@@ -72,7 +67,6 @@ const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
 		return `${datePart} ${pad2(hour)}:00:${pad2(second)}`;
 	}
 
-	// YYYY-MM-DD HH AM/PM
 	match = normalized.match(/^(\d{4}-\d{2}-\d{2})\s(\d{1,2})\s(AM|PM)$/i);
 	if (match) {
 		const [, datePart, hourRaw, ampmRaw] = match;
@@ -85,7 +79,6 @@ const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
 		return `${datePart} ${pad2(hour)}:00:00`;
 	}
 
-	// YYYY-MM-DD HH:MM AM/PM
 	match = normalized.match(
 		/^(\d{4}-\d{2}-\d{2})\s(\d{1,2}):(\d{2})\s(AM|PM)$/i
 	);
@@ -101,7 +94,6 @@ const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
 		return `${datePart} ${pad2(hour)}:${pad2(minute)}:00`;
 	}
 
-	// YYYY-MM-DD HH:MM:SS AM/PM
 	match = normalized.match(
 		/^(\d{4}-\d{2}-\d{2})\s(\d{1,2}):(\d{2}):(\d{2})\s(AM|PM)$/i
 	);
@@ -118,7 +110,6 @@ const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
 		return `${datePart} ${pad2(hour)}:${pad2(minute)}:${pad2(second)}`;
 	}
 
-	// Último intento usando Date
 	const parsed = new Date(normalized);
 	if (!Number.isNaN(parsed.getTime())) {
 		return `${parsed.getFullYear()}-${pad2(parsed.getMonth() + 1)}-${pad2(
@@ -129,6 +120,51 @@ const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
 	}
 
 	return normalized;
+};
+
+const formatDateValueForPdf = (value) => {
+	if (value === null || value === undefined || value === '') return '';
+
+	const parsed = new Date(value);
+	if (Number.isNaN(parsed.getTime())) {
+		const normalized = normalizeTimestamp(value);
+		const reparsed = new Date(normalized.replace(' ', 'T'));
+		if (Number.isNaN(reparsed.getTime())) return String(value);
+
+		return `${pad2(reparsed.getDate())}/${pad2(
+			reparsed.getMonth() + 1
+		)}/${reparsed.getFullYear()} ${pad2(reparsed.getHours())}:${pad2(
+			reparsed.getMinutes()
+		)}:${pad2(reparsed.getSeconds())}`;
+	}
+
+	return `${pad2(parsed.getDate())}/${pad2(parsed.getMonth() + 1)}/${parsed.getFullYear()} ${pad2(parsed.getHours())}:${pad2(parsed.getMinutes())}:${pad2(parsed.getSeconds())}`;
+};
+
+const formatRowsForPdf = (rows, columns) => {
+	const columnKeys = Object.keys(columns || {});
+	const dateLikeKeys = columnKeys.filter((key) => {
+		const lower = String(key).toLowerCase();
+		return (
+			lower.includes('fecha') ||
+			lower.includes('date') ||
+			lower.includes('timestamp')
+		);
+	});
+
+	if (dateLikeKeys.length === 0) return rows;
+
+	return rows.map((row) => {
+		const formatted = { ...row };
+
+		dateLikeKeys.forEach((key) => {
+			if (formatted[key] !== null && formatted[key] !== undefined && formatted[key] !== '') {
+				formatted[key] = formatDateValueForPdf(formatted[key]);
+			}
+		});
+
+		return formatted;
+	});
 };
 
 /**
@@ -909,10 +945,12 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 
 		console.log({ query: sqlQuery, values });
 
-		const rows = await getFromQuery({
+		let rows = await getFromQuery({
 			sql: sqlQuery,
 			values: values,
 		});
+
+		rows = formatRowsForPdf(rows, columns);
 
 		console.log(
 			`Reporte parametrizado "${name}" -> filas encontradas:`,
