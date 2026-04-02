@@ -81,11 +81,12 @@ const FormReporte = ({
 										display: 'grid',
 										gap: 2,
 										gridTemplateColumns: {
-											xs: 'repeat(1, 1fr)',
-											sm: 'repeat(2, 1fr)',
-											md: 'repeat(3, 1fr)',
+											xs: 'repeat(1, minmax(0, 1fr))',
+											sm: 'repeat(2, minmax(0, 1fr))',
+											md: 'repeat(3, minmax(0, 1fr))',
 										},
 										mb: 2,
+										width: '100%',
 									}}
 								>
 									{state.queryFiltro.map((query, index) => {
@@ -99,14 +100,16 @@ const FormReporte = ({
 													gap: 2,
 													gridTemplateColumns: isDateTime
 														? {
-																xs: '1fr',
-																sm: '140px 50px minmax(300px, 1fr)',
+																xs: 'minmax(0, 1fr)',
+																sm: '110px 40px minmax(0, 1fr)',
 														  }
 														: {
-																xs: '2fr 1fr',
-																sm: '2fr 1fr 3fr',
+																xs: 'minmax(0, 1fr)',
+																sm: '110px 40px minmax(0, 1fr)',
 														  },
 													alignItems: 'center',
+													minWidth: 0,
+													width: '100%',
 												}}
 											>
 												<Typography sx={{ py: 1 }}>
@@ -120,7 +123,7 @@ const FormReporte = ({
 												{query.valores.length ? (
 													<TextField
 														select
-														sx={{ py: 1 }}
+														sx={{ py: 1, width: '100%', minWidth: 0 }}
 														label={query.nombre}
 														variant='standard'
 														color='primary'
@@ -151,7 +154,7 @@ const FormReporte = ({
 														.toLowerCase()
 														.includes('mes') ? (
 													<TextField
-														sx={{ py: 1 }}
+														sx={{ py: 1, width: '100%', minWidth: 0 }}
 														type='month'
 														variant='standard'
 														color='primary'
@@ -173,11 +176,8 @@ const FormReporte = ({
 													<TextField
 														sx={{
 															py: 1,
-															minWidth: {
-																xs: '100%',
-																sm: 320,
-																md: 340,
-															},
+															width: '100%',
+															minWidth: 0,
 														}}
 														type='datetime-local'
 														variant='standard'
@@ -198,7 +198,7 @@ const FormReporte = ({
 													/>
 												) : (
 													<TextField
-														sx={{ py: 1 }}
+														sx={{ py: 1, width: '100%', minWidth: 0 }}
 														variant='standard'
 														color='primary'
 														value={query.valor ?? ''}
