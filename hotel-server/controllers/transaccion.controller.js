@@ -11,7 +11,10 @@ import {
 	updateQuery,
 } from '../db/querys.js';
 import { errorHandler } from '../utils/error.utils.js';
-import { formatearFecha } from '../utils/formatos.js';
+import {
+	formatearFecha,
+	getGuatemalaTimestamp,
+} from '../utils/formatos.js';
 
 export const getCorrelativoFiltered = async (req, res) => {
 	try {
@@ -130,6 +133,7 @@ const completarTranEnc = ({ serie, tipo_transaccion, siguiente }, tranEnc) => {
 		serie: serie,
 		tipo_transaccion: tipo_transaccion,
 		documento: siguiente,
+		fecha: getGuatemalaTimestamp(),
 		fecha_ingreso: formatearFecha(
 			tranEnc.fecha_ingreso,
 			tranEnc.hora_ingreso
@@ -156,6 +160,8 @@ const completarTranDet = (
 	{ codigo },
 	detalle
 ) => {
+	const fecha = getGuatemalaTimestamp();
+
 	return detalle.map((d) => {
 		return {
 			codigo: d.codigo > 0 ? d.codigo : 0,
@@ -168,6 +174,7 @@ const completarTranDet = (
 			precio: parseFloat(`${d.precio}`.replace('Q. ', '')) || 0,
 			cantidad: d.cantidad || 1,
 			subtotal: parseFloat(`${d.subtotal}`.replace('Q. ', '')) || 0,
+			fecha,
 		};
 	});
 };
@@ -179,6 +186,8 @@ const completarTranDet = (
  * @returns {Object} Objeto con los datos del encabezado de recibo
  */
 export const completarRcEnc = (rcDet, { cliente, vendedor }) => {
+	const fecha = getGuatemalaTimestamp();
+
 	const rcEncWDuplicated = rcDet.map((detalle) => {
 		return {
 			serie: detalle.serie,
@@ -186,6 +195,7 @@ export const completarRcEnc = (rcDet, { cliente, vendedor }) => {
 			documento: Number(detalle.documento),
 			cliente: cliente,
 			cobrador: vendedor,
+			fecha,
 			abono: 0,
 		};
 	});
@@ -208,6 +218,8 @@ export const completarRcDet = (
 	rcDet,
 	{ serie, tipo_transaccion, siguiente, documento }
 ) => {
+	const fecha = getGuatemalaTimestamp();
+
 	return rcDet.map((r) => {
 		return {
 			codigo: r.codigo,
@@ -217,6 +229,7 @@ export const completarRcDet = (
 			serie_fac: serie,
 			ti_tran_fac: tipo_transaccion,
 			documento_fac: siguiente || documento,
+			fecha,
 			descripcion: r.descripcion,
 			tipo_pago: r.tipo_pago,
 			monto: r.monto,
@@ -310,7 +323,6 @@ export const createTransaccion = async ({ body }, res) => {
 		console.log('---- TRAN DET ----');
 		await bulkInsertQuery(tablesName.TRAN_DETALLE, tranDet);
 
-		// TODO: Actualizar saldo del cliente
 		console.log('Datos antiguos ->', tipo_transaccion);
 
 		if (rcDetalle.length > 0) {
@@ -345,13 +357,12 @@ export const createTransaccion = async ({ body }, res) => {
 			}
 		}
 
-		// Update state of habitacion depend on operation
 		await updateQuery(
 			tablesName.HABITACION,
 			{ estado: sigEstadoHab(operacion) },
 			{ codigo: habitacion.codigo }
 		);
-		// Update state of transaction to 1 (completed)
+
 		if (tipo_transaccion === 'RE') {
 			console.log('----- COMPLETED -----');
 			console.log({ serie, tipo_transaccion, documento });
@@ -415,14 +426,12 @@ export const updateTransaccion = async ({ body }, res) => {
 			return (detalle.servicio = 1);
 		});
 
-		// Actualizar tranEnc
 		await updateQuery(tablesName.TRAN_ENC, tranEnc, {
 			serie: tranCorrelativo.serie,
 			tipo_transaccion: tranCorrelativo.tipo_transaccion,
 			documento: tranCorrelativo.documento || tranCorrelativo.siguiente,
 		});
 
-		// Actualizar habitacion
 		await updateQuery(
 			tablesName.TRAN_DETALLE,
 			{
@@ -440,7 +449,6 @@ export const updateTransaccion = async ({ body }, res) => {
 			}
 		);
 
-		// Actualizar tranDet
 		if (new_tranDet.length > 0) {
 			await bulkInsertQuery(tablesName.TRAN_DETALLE, new_tranDet);
 		}
@@ -501,7 +509,15 @@ export const getAllDetalleTransaccion = async ({ query, body }, res) => {
 export const createDetalleTransaccion = async ({ body }, res) => {
 	try {
 		console.log('insert detalles', body);
-		await bulkInsertQuery(tablesName.TRAN_DETALLE, body);
+
+		const rows = Array.isArray(body)
+			? body.map((item) => ({
+					...item,
+					fecha: item.fecha || getGuatemalaTimestamp(),
+			  }))
+			: [{ ...body, fecha: body.fecha || getGuatemalaTimestamp() }];
+
+		await bulkInsertQuery(tablesName.TRAN_DETALLE, rows);
 		res.status(200).json({ message: 'Detalle de transacción creado' });
 	} catch (error) {
 		errorHandler(res, error);
@@ -531,8 +547,6 @@ export const getTransaccionByDocumento = async ({ query }, res) => {
 		const { serie, tipo_transaccion, documento } = query;
 		let dataHabitacion = {};
 
-		// GET TRAN ENCABEZADO
-
 		const tranEncs = await getFromQuery({
 			sql: `SELECT * 
 			FROM encabezado_transaccion et 
@@ -549,8 +563,6 @@ export const getTransaccionByDocumento = async ({ query }, res) => {
 			throw new Error('No se encontró la transacción');
 		}
 
-		// GET TRAN DETALLE
-
 		const tranDetalles = await getQueryMethod({
 			table: tablesName.TRAN_DETALLE,
 			query,
@@ -560,8 +572,6 @@ export const getTransaccionByDocumento = async ({ query }, res) => {
 			throw new Error('No se encontró el detalle de la transacción');
 		}
 
-		// GET HABITACION
-
 		dataHabitacion = await getOneQueryMethod({
 			table: viewsName.VIEW_HABITACION,
 			query: {
@@ -569,7 +579,6 @@ export const getTransaccionByDocumento = async ({ query }, res) => {
 			},
 		});
 
-		// GET RC DETALLE
 		const rcDetalles = await getQueryMethod({
 			table: tablesName.RC_DETALLE,
 			query: {
@@ -661,19 +670,6 @@ export const getTransaccionByHabitacion = async ({ query, body }, res) => {
 				documento_fac: firstTranEnc.documento,
 			},
 		});
-
-		// if (listRcDet.count > 0) {
-		// 	const firstRcDet = listRcDet.rows.pop();
-
-		// 	rcEnc = await getOneQueryMethod({
-		// 		table: tablesName.RC_ENC,
-		// 		query: {
-		// 			serie: firstRcDet.serie,
-		// 			tipo_transaccion: firstRcDet.tipo_transaccion,
-		// 			documento: firstRcDet.documento,
-		// 		},
-		// 	});
-		// }
 
 		res.status(200).json({
 			habitacion: habitaciones.at(0),
