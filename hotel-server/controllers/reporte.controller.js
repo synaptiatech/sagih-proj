@@ -19,6 +19,8 @@ import {
 	writeHead,
 } from '../utils/reporte.utils.js';
 
+const pad2 = (value) => String(value).padStart(2, '0');
+
 const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
 	if (value === null || value === undefined || String(value).trim() === '') {
 		return '';
@@ -26,16 +28,104 @@ const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
 
 	let normalized = String(value).trim().replace('T', ' ').replace(/\s+/g, ' ');
 
+	normalized = normalized
+		.replace(/a\.\s*m\./gi, 'AM')
+		.replace(/p\.\s*m\./gi, 'PM')
+		.replace(/\ba\.?\s*m\.?\b/gi, 'AM')
+		.replace(/\bp\.?\s*m\.?\b/gi, 'PM')
+		.replace(/\s+/g, ' ')
+		.trim();
+
+	// YYYY-MM-DD
 	if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
 		return `${normalized} ${endOfDay ? '23:59:59' : '00:00:00'}`;
 	}
 
+	// YYYY-MM-DD HH:MM
 	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}$/.test(normalized)) {
 		return `${normalized}:00`;
 	}
 
+	// YYYY-MM-DD HH:MM:SS.mmmmmm
 	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+$/.test(normalized)) {
 		return normalized.replace(/\.\d+$/, '');
+	}
+
+	// YYYY-MM-DD HH:MM:SS
+	if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(normalized)) {
+		return normalized;
+	}
+
+	// Caso raro: YYYY-MM-DD HH AM:SS   -> minutos faltantes, segundos presentes
+	let match = normalized.match(
+		/^(\d{4}-\d{2}-\d{2})\s(\d{1,2})\s(AM|PM):(\d{1,2})$/i
+	);
+	if (match) {
+		const [, datePart, hourRaw, ampmRaw, secondRaw] = match;
+		let hour = Number(hourRaw);
+		const second = Number(secondRaw);
+		const ampm = ampmRaw.toUpperCase();
+
+		if (ampm === 'AM' && hour === 12) hour = 0;
+		if (ampm === 'PM' && hour < 12) hour += 12;
+
+		return `${datePart} ${pad2(hour)}:00:${pad2(second)}`;
+	}
+
+	// YYYY-MM-DD HH AM/PM
+	match = normalized.match(/^(\d{4}-\d{2}-\d{2})\s(\d{1,2})\s(AM|PM)$/i);
+	if (match) {
+		const [, datePart, hourRaw, ampmRaw] = match;
+		let hour = Number(hourRaw);
+		const ampm = ampmRaw.toUpperCase();
+
+		if (ampm === 'AM' && hour === 12) hour = 0;
+		if (ampm === 'PM' && hour < 12) hour += 12;
+
+		return `${datePart} ${pad2(hour)}:00:00`;
+	}
+
+	// YYYY-MM-DD HH:MM AM/PM
+	match = normalized.match(
+		/^(\d{4}-\d{2}-\d{2})\s(\d{1,2}):(\d{2})\s(AM|PM)$/i
+	);
+	if (match) {
+		const [, datePart, hourRaw, minuteRaw, ampmRaw] = match;
+		let hour = Number(hourRaw);
+		const minute = Number(minuteRaw);
+		const ampm = ampmRaw.toUpperCase();
+
+		if (ampm === 'AM' && hour === 12) hour = 0;
+		if (ampm === 'PM' && hour < 12) hour += 12;
+
+		return `${datePart} ${pad2(hour)}:${pad2(minute)}:00`;
+	}
+
+	// YYYY-MM-DD HH:MM:SS AM/PM
+	match = normalized.match(
+		/^(\d{4}-\d{2}-\d{2})\s(\d{1,2}):(\d{2}):(\d{2})\s(AM|PM)$/i
+	);
+	if (match) {
+		const [, datePart, hourRaw, minuteRaw, secondRaw, ampmRaw] = match;
+		let hour = Number(hourRaw);
+		const minute = Number(minuteRaw);
+		const second = Number(secondRaw);
+		const ampm = ampmRaw.toUpperCase();
+
+		if (ampm === 'AM' && hour === 12) hour = 0;
+		if (ampm === 'PM' && hour < 12) hour += 12;
+
+		return `${datePart} ${pad2(hour)}:${pad2(minute)}:${pad2(second)}`;
+	}
+
+	// Último intento usando Date
+	const parsed = new Date(normalized);
+	if (!Number.isNaN(parsed.getTime())) {
+		return `${parsed.getFullYear()}-${pad2(parsed.getMonth() + 1)}-${pad2(
+			parsed.getDate()
+		)} ${pad2(parsed.getHours())}:${pad2(parsed.getMinutes())}:${pad2(
+			parsed.getSeconds()
+		)}`;
 	}
 
 	return normalized;
@@ -782,15 +872,38 @@ const obtenerDiasMes = (fecha) => {
 // cambios para generar reporte parametrizado con pdfkit y mostrar sumatoria
 export const getReporteParametrizado = async ({ body, query, user }, res) => {
 	try {
-		const { name, table, columns, customWhere } = body;
+		const { name, table, columns, customWhere = [] } = body;
+
+		const normalizedWhere = customWhere.map((item) => {
+			const columna = String(item?.columna || '').toLowerCase();
+			const valor = item?.valor;
+
+			if (!valor) return item;
+
+			if (
+				columna.includes('fecha') ||
+				columna.includes('date') ||
+				columna.includes('timestamp')
+			) {
+				return {
+					...item,
+					valor: normalizeTimestamp(valor, {
+						endOfDay: String(item?.relacion || '').toLowerCase() === 'menor igual',
+					}),
+				};
+			}
+
+			return item;
+		});
 
 		console.log('**************');
-		console.log({ customWhere });
+		console.log({ customWhereOriginal: customWhere });
+		console.log({ customWhereNormalizado: normalizedWhere });
 		console.log('**************');
 
 		const { query: sqlQuery, values } = await getOneCopy(
 			table,
-			customWhere,
+			normalizedWhere,
 			columns
 		);
 
@@ -832,7 +945,7 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 		});
 
 		const title = `Reporte de ${name.toLowerCase()}`;
-		const criterio = `Criterio ${obtenerDescripcionReporte(customWhere)}`;
+		const criterio = `Criterio ${obtenerDescripcionReporte(normalizedWhere)}`;
 
 		await setupLetterhead(doc, user.usuario, title, criterio);
 
