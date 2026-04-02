@@ -68,7 +68,7 @@ export const Navbar = ({ setOpen }: DrawerProps) => {
 						<MenuIcon fontSize='small' />
 					</IconButton>
 					<img
-						src={`${BASE_URL}${empresa.logo}` || ''}
+						src={`${BASE_URL}/${empresa.logo}`|| ''}
 						alt='Company logo'
 						style={{
 							height: 48,
