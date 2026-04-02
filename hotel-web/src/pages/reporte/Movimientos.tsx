@@ -7,19 +7,50 @@ import { downloadFileByBloodPart } from '../../utils/DownloadFile';
 import { handleError } from '../../utils/HandleError';
 import { Card, Select } from '@mui/material';
 import { PaymentsReport } from '../../components/PaymentsReport';
+
 const TransactionsReport = lazy(
 	() => import('../../components/TransactionsReport/TransactionsReport')
 );
 
 const TypeMoves = ['Ventas', 'Cobros'];
 
+const normalizeDateTimeValue = (value: any) => {
+	if (value === null || value === undefined) return value;
+
+	const raw = String(value).trim();
+	if (!raw) return raw;
+
+	// datetime-local => SQL timestamp
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(raw)) {
+		return raw.replace('T', ' ');
+	}
+
+	// datetime-local sin segundos => agregar segundos
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) {
+		return `${raw.replace('T', ' ')}:00`;
+	}
+
+	// solo fecha
+	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+		return `${raw} 00:00:00`;
+	}
+
+	return raw.replace('T', ' ');
+};
+
+const isDateTimeField = (q: any) => {
+	const columna = String(q?.columna || '').toLowerCase();
+	return (
+		columna.includes('fecha') ||
+		columna.includes('date') ||
+		columna.includes('timestamp')
+	);
+};
+
 const Movimientos = () => {
 	const [loading, setLoading] = useState(false);
 	const [movesSelected, setmovesSelected] = useState(TypeMoves[0]);
-	// const { data, isLoading, isError } = useFetch({
-	// 	path: `${URI.transaccion}/reportes`,
-	// 	table: 'v_reporte_transaccion',
-	// });
+
 	const [state, dispatch] = useReducer(reporteReducer, {
 		colsReporte: {},
 		queryFiltro: [],
@@ -30,11 +61,16 @@ const Movimientos = () => {
 		_event: FormEvent<HTMLFormElement>
 	): Promise<void> {
 		_event.preventDefault();
+
 		try {
 			setLoading(true);
+
+			const reportName =
+				movesSelected === 'Ventas' ? 'Movimientos' : 'Pagos';
+
 			const { data } = await downloadFile({
 				path: URI.reporte + '/parametrizado',
-				name: movesSelected ? 'Movimientos' : 'Pagos',
+				name: reportName,
 				table:
 					movesSelected === 'Ventas'
 						? 'v_reporte_transaccion'
@@ -42,10 +78,14 @@ const Movimientos = () => {
 				columns: state.colsReporte,
 				customWhere: state.queryFiltro
 					.map((q: any) => {
+						const valor = isDateTimeField(q)
+							? normalizeDateTimeValue(q.valor)
+							: q.valor;
+
 						return {
 							columna: q.columna,
 							relacion: q.relacion,
-							valor: q.valor,
+							valor,
 						};
 					})
 					.filter((q: any) => q.valor !== ''),
@@ -55,148 +95,14 @@ const Movimientos = () => {
 					str_saldo: 'Saldo',
 				},
 			});
-			downloadFileByBloodPart(
-				data,
-				movesSelected ? 'Movimientos' : 'Pagos'
-			);
+
+			downloadFileByBloodPart(data, reportName);
 		} catch (error) {
 			handleError('No se pudo descargar el archivo', error);
 		} finally {
 			setLoading(false);
 		}
 	}
-
-	// useEffect(() => {
-	// 	if (!isLoading && !isError && data) {
-	// 		const { clientes, vendedores, transacciones } = data;
-	// 		console.log({
-	// 			clientes: clientes.rows,
-	// 			vendedores: vendedores.rows,
-	// 			transacciones: transacciones.rows,
-	// 		});
-	// 		dispatch({
-	// 			type: reporteReducerTypes.SET_QUERY_FILTRO,
-	// 			payload: [
-	// 				{
-	// 					nombre: 'Serie',
-	// 					relacion: '=',
-	// 					columna: 'serie',
-	// 					valores: [],
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Transacción',
-	// 					relacion: '=',
-	// 					columna: 'tipo_transaccion',
-	// 					valores: transacciones.rows.map((t: any) => ({
-	// 						valor: t.nombre,
-	// 						id: t.codigo,
-	// 					})),
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Documento',
-	// 					relacion: '=',
-	// 					columna: 'doc',
-	// 					valores: [],
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Total',
-	// 					relacion: '>=',
-	// 					columna: 'total',
-	// 					valores: [],
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Fecha de ingreso',
-	// 					relacion: '>=',
-	// 					columna: 'dat_fecha_ingreso',
-	// 					valores: [],
-	// 					valor: formatDateToInput({
-	// 						date: new Date(),
-	// 						setDay: 1,
-	// 					}),
-	// 				},
-	// 				{
-	// 					nombre: 'y',
-	// 					relacion: '<=',
-	// 					columna: 'dat_fecha_ingreso',
-	// 					valores: [],
-	// 					valor: formatDateToInput({
-	// 						date: new Date(),
-	// 					}),
-	// 				},
-	// 				{
-	// 					nombre: 'Saldo',
-	// 					relacion: '>=',
-	// 					columna: 'saldo',
-	// 					valores: [],
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Fecha de salida',
-	// 					relacion: '>=',
-	// 					columna: 'dat_fecha_salida',
-	// 					valores: [],
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'y',
-	// 					relacion: '<=',
-	// 					columna: 'dat_fecha_salida',
-	// 					valores: [],
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Número de personas',
-	// 					relacion: '=',
-	// 					columna: 'numero_personas',
-	// 					valores: [],
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Cliente',
-	// 					relacion: '=',
-	// 					columna: 'cliente',
-	// 					valores: clientes.rows.map((c: any) => ({
-	// 						valor: `${c.codigo} ${c.nombre}`,
-	// 						id: c.codigo,
-	// 					})),
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Cliente',
-	// 					relacion: '~~*',
-	// 					columna: 'n_cliente',
-	// 					valores: [],
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Vendedor',
-	// 					relacion: '=',
-	// 					columna: 'vendedor',
-	// 					valores: vendedores.rows.map((v: any) => ({
-	// 						valor: `${v.codigo} ${v.nombre}`,
-	// 						id: v.codigo,
-	// 					})),
-	// 					valor: '',
-	// 				},
-	// 				{
-	// 					nombre: 'Vendedor',
-	// 					relacion: '~~*',
-	// 					columna: 'n_vendedor',
-	// 					valores: [],
-	// 					valor: '',
-	// 				},
-	// 			],
-	// 		});
-	// 	}
-	// }, [data]);
-
-	// if (isLoading) return <GridSkeleton />;
-
-	// if (isError) return <ErrorLayout error='No se pudo recuperar los datos' />;
 
 	return (
 		<>
@@ -206,7 +112,8 @@ const Movimientos = () => {
 					width: 'fit-content',
 					ml: 'auto',
 					mr: 4,
-				}}>
+				}}
+			>
 				<Select
 					sx={{ width: 200 }}
 					variant='standard'
@@ -219,7 +126,8 @@ const Movimientos = () => {
 					inputProps={{
 						name: 'tipo_movimiento',
 						id: 'tipo_movimiento',
-					}}>
+					}}
+				>
 					{TypeMoves.map((type, index) => (
 						<option key={index} value={type}>
 							{type}
@@ -227,6 +135,7 @@ const Movimientos = () => {
 					))}
 				</Select>
 			</Card>
+
 			{movesSelected === TypeMoves[0] ? (
 				<TransactionsReport
 					state={state}
@@ -240,6 +149,7 @@ const Movimientos = () => {
 					handleSubmit={handleSubmit}
 				/>
 			)}
+
 			{loading && <Loader />}
 		</>
 	);
