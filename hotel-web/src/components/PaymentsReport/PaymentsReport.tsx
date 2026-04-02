@@ -28,7 +28,7 @@ const PaymentsReport: React.FC<PaymentsReportProps> = ({
 			type: reporteReducerTypes.UPDATE_COLS_REPORTE,
 			payload: {
 				doc: 'DOCUMENTO',
-				str_det_fecha: 'FECHA',
+				det_fecha: 'FECHA Y HORA',
 				str_monto: 'PAGO',
 			},
 		});
