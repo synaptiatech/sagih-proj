@@ -1,6 +1,9 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Box, Button, Card, TextField } from '@mui/material';
 import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
 import React, { useEffect, useState } from 'react';
 import { Controller, SubmitHandler, useForm } from 'react-hook-form';
 import swal from 'sweetalert';
@@ -15,35 +18,49 @@ import { dataPost, downloadFile } from '../../../services/fetching.service';
 import { downloadFileByBloodPart } from '../../../utils/DownloadFile';
 import { handleError } from '../../../utils/HandleError';
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(customParseFormat);
+
 export type CierreProps = {};
 
+const TZ = 'America/Guatemala';
 const INPUT_DATE_TIME_FORMAT = 'YYYY-MM-DDTHH:mm';
 const API_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
+const nowInGuatemala = () => dayjs().tz(TZ);
+
+const parseGuatemalaDate = (value?: string | Date | null) => {
+	if (!value) return nowInGuatemala();
+
+	if (value instanceof Date) {
+		return dayjs(value).tz(TZ);
+	}
+
+	if (typeof value === 'string') {
+		if (value.includes('T')) {
+			const parsedInput = dayjs.tz(value, INPUT_DATE_TIME_FORMAT, TZ);
+			if (parsedInput.isValid()) return parsedInput;
+		}
+
+		if (value.includes(' ')) {
+			const parsedApi = dayjs.tz(value, API_DATE_TIME_FORMAT, TZ);
+			if (parsedApi.isValid()) return parsedApi;
+		}
+
+		const parsedGeneral = dayjs(value);
+		if (parsedGeneral.isValid()) return parsedGeneral.tz(TZ);
+	}
+
+	return nowInGuatemala();
+};
+
 const toInputDateTime = (value?: string | Date | null) => {
-	if (!value) {
-		return dayjs().format(INPUT_DATE_TIME_FORMAT);
-	}
-
-	const parsed = dayjs(value);
-	if (parsed.isValid()) {
-		return parsed.format(INPUT_DATE_TIME_FORMAT);
-	}
-
-	return dayjs().format(INPUT_DATE_TIME_FORMAT);
+	return parseGuatemalaDate(value).format(INPUT_DATE_TIME_FORMAT);
 };
 
 const toApiDateTime = (value?: string | null) => {
-	if (!value) {
-		return dayjs().format(API_DATE_TIME_FORMAT);
-	}
-
-	const parsed = dayjs(value);
-	if (parsed.isValid()) {
-		return parsed.format(API_DATE_TIME_FORMAT);
-	}
-
-	return dayjs().format(API_DATE_TIME_FORMAT);
+	return parseGuatemalaDate(value).format(API_DATE_TIME_FORMAT);
 };
 
 const Cierre: React.FC<CierreProps> = () => {
@@ -60,6 +77,7 @@ const Cierre: React.FC<CierreProps> = () => {
 		table: 'cierre',
 		columns: {
 			fecha_cierre: 'Cierre',
+			fecha_real: 'Cierre real',
 		},
 	});
 
@@ -71,9 +89,9 @@ const Cierre: React.FC<CierreProps> = () => {
 		formState: { errors },
 	} = useForm<CierreType>({
 		defaultValues: {
-			openingDate: toInputDateTime(new Date()),
-			shiftClose: toInputDateTime(new Date()),
-			actualClose: toInputDateTime(new Date()),
+			openingDate: toInputDateTime(nowInGuatemala().toDate()),
+			shiftClose: toInputDateTime(nowInGuatemala().toDate()),
+			actualClose: toInputDateTime(nowInGuatemala().toDate()),
 		},
 		resolver: yupResolver(schemaCierre),
 		mode: 'onBlur',
@@ -142,13 +160,18 @@ const Cierre: React.FC<CierreProps> = () => {
 	};
 
 	useEffect(() => {
+		const now = nowInGuatemala();
+
+		setValue('shiftClose', toInputDateTime(now.toDate()));
+		setValue('actualClose', toInputDateTime(now.toDate()));
+
 		if (cierre !== undefined) {
 			console.log('Cierre >', cierre);
 
-			setValue(
-				'openingDate',
-				toInputDateTime(cierre?.fecha_cierre ?? new Date())
-			);
+			const openingSource =
+				cierre?.fecha_real ?? cierre?.fecha_cierre ?? now.toDate();
+
+			setValue('openingDate', toInputDateTime(openingSource));
 		}
 	}, [cierre, setValue]);
 
