@@ -1,5 +1,52 @@
 import { pool } from '../config/db.js';
 import { __dirname, logger } from '../utils/log.utils.js';
+import { toGuatemalaTimestamp } from '../utils/formatos.js';
+
+/**
+ * Campos de fecha que deben normalizarse al formato estándar Guatemala
+ */
+const DATE_FIELD_NAMES = new Set([
+	'fecha',
+	'fecha_ingreso',
+	'fecha_salida',
+	'fecha_cierre',
+	'fecha_real',
+	'fecha_creacion',
+]);
+
+/**
+ * Determina si una clave corresponde a un campo de fecha/timestamp
+ * @param {string} key
+ * @returns {boolean}
+ */
+const isDateField = (key) => {
+	if (!key || typeof key !== 'string') return false;
+	return DATE_FIELD_NAMES.has(key.toLowerCase());
+};
+
+/**
+ * Normaliza campos de fecha a formato Guatemala
+ * - No altera null
+ * - No altera undefined
+ * - Solo transforma campos conocidos de fecha
+ * @param {Record<string, any>} row
+ * @returns {Record<string, any>}
+ */
+const normalizeDates = (row = {}) => {
+	const normalized = { ...row };
+
+	for (const key of Object.keys(normalized)) {
+		if (!isDateField(key)) continue;
+
+		const value = normalized[key];
+
+		if (value === undefined || value === null || value === '') continue;
+
+		normalized[key] = toGuatemalaTimestamp(value);
+	}
+
+	return normalized;
+};
 
 /**
  * Función para realizar una consulta de tipo GET con join
@@ -515,16 +562,23 @@ export const getFromQuery = async ({ sql, values = [] }) => {
  * @returns Se retorna un arreglo con los datos insertados
  */
 export const insertQuery = async (table, rows) => {
-	if (rows.codigo === undefined || rows.codigo >= 0) delete rows.codigo;
+	const normalizedRows = normalizeDates(rows);
 
-	const keys = Object.keys(rows);
-	const values = Object.values(rows);
+	if (
+		normalizedRows.codigo === undefined ||
+		normalizedRows.codigo >= 0
+	) {
+		delete normalizedRows.codigo;
+	}
+
+	const keys = Object.keys(normalizedRows);
+	const values = Object.values(normalizedRows);
 
 	const query = `INSERT INTO ${table} (${keys.join(',')}) VALUES (${keys
 		.map((_key, index) => `$${index + 1}`)
 		.join(',')}) RETURNING *`;
 
-	console.log({ query, values });
+	logger(__dirname, 'insertQuery', { query, values });
 
 	const results = await pool.query(query, values);
 	return results;
@@ -538,7 +592,6 @@ export const insertQuery = async (table, rows) => {
  */
 export const bulkInsertQuery = async (table, rows) => {
 	for await (const row of rows) {
-		console.log('-----> ', row);
 		await insertQuery(table, row);
 	}
 
@@ -563,13 +616,15 @@ export const bulkUpdateQuery = async (table, rows, where) => {
 /**
  * Función para realizar una consulta de tipo UPDATE
  * @param {string} table Nombre de la tabla
- * @param {Object} rows Objeto con los datos a insertar
+ * @param {Object} rows Objeto con los datos a actualizar
  * @param {Object} where Objeto con los datos de la condición WHERE
- * @returns Se retorna un arreglo con los datos insertados
+ * @returns Se retorna un arreglo con los datos actualizados
  */
 export const updateQuery = async (table, rows, where) => {
-	const rowsKeys = Object.keys(rows);
-	const rowsValues = Object.values(rows);
+	const normalizedRows = normalizeDates(rows);
+
+	const rowsKeys = Object.keys(normalizedRows);
+	const rowsValues = Object.values(normalizedRows);
 
 	const whereKeys = Object.keys(where);
 	const whereValues = Object.values(where);
@@ -602,6 +657,8 @@ export const deleteQuery = async (table, where) => {
 		.map((key, index) => `${key} = $${index + 1}`)
 		.join(' AND ')}
 		RETURNING *`;
+
+	logger(__dirname, 'deleteQuery', { query, values: whereValues });
 
 	const results = await pool.query(query, whereValues);
 	return results;
