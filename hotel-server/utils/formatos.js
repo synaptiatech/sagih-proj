@@ -10,7 +10,9 @@ dayjs.extend(timezone);
 export const APP_TIMEZONE = 'America/Guatemala';
 export const DB_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 export const INPUT_TIMESTAMP_FORMAT = 'YYYY-MM-DDTHH:mm';
+export const INPUT_TIMESTAMP_WITH_SECONDS_FORMAT = 'YYYY-MM-DDTHH:mm:ss';
 export const API_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+export const DATE_ONLY_FORMAT = 'YYYY-MM-DD';
 
 /**
  * Formatear fecha para insertar en postgresql yyyy-mm-dd hh:mm:ss (24h)
@@ -72,7 +74,9 @@ export const formatTime = (date = new Date()) => {
  * @returns {string}
  */
 export const formatearFecha = (fecha, hora) => {
-	return dayjs.tz(`${fecha} ${hora}`, 'YYYY-MM-DD HH:mm', APP_TIMEZONE).format(DB_TIMESTAMP_FORMAT);
+	return dayjs
+		.tz(`${fecha} ${hora}`, 'YYYY-MM-DD HH:mm', APP_TIMEZONE)
+		.format(DB_TIMESTAMP_FORMAT);
 };
 
 /**
@@ -84,34 +88,105 @@ export const getGuatemalaTimestamp = () => {
 };
 
 /**
- * Convierte un valor a timestamp PostgreSQL en hora Guatemala
+ * Convierte un valor ISO con zona horaria explícita a Guatemala
+ * @param {string} value
+ * @returns {string|null}
+ */
+const parseIsoWithTimezone = (value) => {
+	const hasExplicitTimezone =
+		typeof value === 'string' &&
+		(/[zZ]$/.test(value) || /[+-]\d{2}:\d{2}$/.test(value));
+
+	if (!hasExplicitTimezone) return null;
+
+	const parsed = dayjs(value);
+	if (!parsed.isValid()) return null;
+
+	return parsed.tz(APP_TIMEZONE).format(DB_TIMESTAMP_FORMAT);
+};
+
+/**
+ * Convierte un valor a timestamp PostgreSQL en hora Guatemala.
+ * Acepta únicamente formatos controlados para evitar errores ambiguos.
+ *
  * Acepta:
  * - YYYY-MM-DD HH:mm:ss
  * - YYYY-MM-DDTHH:mm
- * - Date
- * - strings parseables
+ * - YYYY-MM-DDTHH:mm:ss
+ * - YYYY-MM-DD
+ * - Date válido
+ * - ISO con Z o con offset explícito
+ *
  * @param {string|Date|null|undefined} value
  * @returns {string}
  */
 export const toGuatemalaTimestamp = (value) => {
-	if (!value) return getGuatemalaTimestamp();
+	if (value === undefined || value === null) {
+		return getGuatemalaTimestamp();
+	}
 
 	if (value instanceof Date) {
-		return dayjs(value).tz(APP_TIMEZONE).format(DB_TIMESTAMP_FORMAT);
+		const parsedDate = dayjs(value);
+		if (!parsedDate.isValid()) {
+			throw new Error(`Fecha inválida recibida como Date: ${value}`);
+		}
+		return parsedDate.tz(APP_TIMEZONE).format(DB_TIMESTAMP_FORMAT);
 	}
 
 	if (typeof value === 'string') {
-		const apiParsed = dayjs.tz(value, API_TIMESTAMP_FORMAT, APP_TIMEZONE, true);
-		if (apiParsed.isValid()) return apiParsed.format(DB_TIMESTAMP_FORMAT);
+		const cleanValue = value.trim();
 
-		const inputParsed = dayjs.tz(value, INPUT_TIMESTAMP_FORMAT, APP_TIMEZONE, true);
-		if (inputParsed.isValid()) return inputParsed.format(DB_TIMESTAMP_FORMAT);
-
-		const generalParsed = dayjs(value);
-		if (generalParsed.isValid()) {
-			return generalParsed.tz(APP_TIMEZONE).format(DB_TIMESTAMP_FORMAT);
+		if (cleanValue === '') {
+			return getGuatemalaTimestamp();
 		}
+
+		const apiParsed = dayjs.tz(
+			cleanValue,
+			API_TIMESTAMP_FORMAT,
+			APP_TIMEZONE,
+			true
+		);
+		if (apiParsed.isValid()) {
+			return apiParsed.format(DB_TIMESTAMP_FORMAT);
+		}
+
+		const inputParsed = dayjs.tz(
+			cleanValue,
+			INPUT_TIMESTAMP_FORMAT,
+			APP_TIMEZONE,
+			true
+		);
+		if (inputParsed.isValid()) {
+			return inputParsed.format(DB_TIMESTAMP_FORMAT);
+		}
+
+		const inputWithSecondsParsed = dayjs.tz(
+			cleanValue,
+			INPUT_TIMESTAMP_WITH_SECONDS_FORMAT,
+			APP_TIMEZONE,
+			true
+		);
+		if (inputWithSecondsParsed.isValid()) {
+			return inputWithSecondsParsed.format(DB_TIMESTAMP_FORMAT);
+		}
+
+		const dateOnlyParsed = dayjs.tz(
+			cleanValue,
+			DATE_ONLY_FORMAT,
+			APP_TIMEZONE,
+			true
+		);
+		if (dateOnlyParsed.isValid()) {
+			return dateOnlyParsed.startOf('day').format(DB_TIMESTAMP_FORMAT);
+		}
+
+		const isoWithTimezone = parseIsoWithTimezone(cleanValue);
+		if (isoWithTimezone) {
+			return isoWithTimezone;
+		}
+
+		throw new Error(`Fecha inválida recibida: ${cleanValue}`);
 	}
 
-	return getGuatemalaTimestamp();
+	throw new Error(`Tipo de fecha no soportado: ${typeof value}`);
 };
