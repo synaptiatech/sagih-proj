@@ -453,7 +453,7 @@ export const getQueryMethod = async ({
 		}
 	}
 
-	let sql = `SELECT ${kCols.length > 0 ? kCols : '*'} FROM ${strTableName}`;
+	let sql = `SELECT ${kCols.length > 0 ? kCols.join(', ') : '*'} FROM ${strTableName}`;
 
 	if (customWhere) {
 		const [customWhereClause, customWhereValues] = getCustomWhereClause(
@@ -491,6 +491,7 @@ export const getQueryMethod = async ({
 	}
 
 	const hasPagination = pageNumber && pageSize;
+
 	if (!hasPagination) {
 		if (limit) {
 			sql += `\nLIMIT ${limit}`;
@@ -499,26 +500,31 @@ export const getQueryMethod = async ({
 		if (offset) {
 			sql += `\nOFFSET ${offset}`;
 		}
+
+		logger(__dirname, 'getQueryMethod', { sql, values });
+
+		const { rows } = await pool.query(sql, values);
+		return { rows, count: rows.length };
 	}
 
-	let count = 0;
+	const pageOffset = getOffset(pageNumber, pageSize);
+	const paginatedSql = `${sql}\nOFFSET ${pageOffset} LIMIT ${pageSize}`;
 
-	if (hasPagination) {
-		const pageOffset = getOffset(pageNumber, pageSize);
-		const paginatedSql = `${sql}\nOFFSET ${pageOffset} LIMIT ${pageSize}`;
+	const countSql = `SELECT COUNT(*) AS total FROM (${sql}) AS subquery_count`;
 
-		logger(__dirname, 'getQueryMethod', { sql: paginatedSql, values });
+	logger(__dirname, 'getQueryMethod', {
+		sql: paginatedSql,
+		countSql,
+		values,
+	});
 
-		const { rows } = await pool.query(paginatedSql, values);
-		count = rows.length;
+	const [dataResult, countResult] = await Promise.all([
+		pool.query(paginatedSql, values),
+		pool.query(countSql, values),
+	]);
 
-		return { rows, count };
-	}
-
-	logger(__dirname, 'getQueryMethod', { sql, values });
-
-	const { rows } = await pool.query(sql, values);
-	count = rows.length;
+	const rows = dataResult.rows;
+	const count = Number(countResult.rows[0]?.total || 0);
 
 	return { rows, count };
 };
