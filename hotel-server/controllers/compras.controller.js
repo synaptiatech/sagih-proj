@@ -37,14 +37,23 @@ export const getCompras = async ({ query, body }, res) => {
 };
 
 export const compraObject = ({ correlativo, compras }) => {
+	const rawFecha = compras?.fecha;
+
+	const hasValidFecha =
+		rawFecha instanceof Date ||
+		(typeof rawFecha === 'string' &&
+			rawFecha.trim() !== '' &&
+			rawFecha.trim().toLowerCase() !== 'undefined' &&
+			rawFecha.trim().toLowerCase() !== 'null');
+
 	return {
 		serie: correlativo.serie,
 		tipo_transaccion: correlativo.tipo_transaccion,
 		documento: correlativo.siguiente || compras.documento,
-		fecha: compras.fecha
-			? toGuatemalaTimestamp(compras.fecha)
+		fecha: hasValidFecha
+			? toGuatemalaTimestamp(rawFecha)
 			: getGuatemalaTimestamp(),
-		proveedor: compras.codigo,
+		proveedor: compras.codigo || compras.proveedor,
 		descripcion: compras.descripcion,
 		total: compras.total,
 		iva: compras.iva,
@@ -54,11 +63,19 @@ export const compraObject = ({ correlativo, compras }) => {
 export const createCompras = async ({ body }, res) => {
 	try {
 		const data = body || {};
+		const rawFecha = data.fecha;
+
+		const hasValidFecha =
+			rawFecha instanceof Date ||
+			(typeof rawFecha === 'string' &&
+				rawFecha.trim() !== '' &&
+				rawFecha.trim().toLowerCase() !== 'undefined' &&
+				rawFecha.trim().toLowerCase() !== 'null');
 
 		const toSave = {
 			...data,
-			fecha: data.fecha
-				? toGuatemalaTimestamp(data.fecha)
+			fecha: hasValidFecha
+				? toGuatemalaTimestamp(rawFecha)
 				: getGuatemalaTimestamp(),
 		};
 
@@ -75,15 +92,21 @@ export const updateCompras = async ({ query, body }, res) => {
 			...body,
 		};
 
-		if (
-			Object.prototype.hasOwnProperty.call(toUpdate, 'fecha') &&
-			toUpdate.fecha !== null &&
-			toUpdate.fecha !== undefined &&
-			`${toUpdate.fecha}`.trim() !== ''
-		) {
-			toUpdate.fecha = toGuatemalaTimestamp(toUpdate.fecha);
-		} else if (Object.prototype.hasOwnProperty.call(toUpdate, 'fecha')) {
-			delete toUpdate.fecha;
+		if (Object.prototype.hasOwnProperty.call(toUpdate, 'fecha')) {
+			const rawFecha = toUpdate.fecha;
+
+			const hasValidFecha =
+				rawFecha instanceof Date ||
+				(typeof rawFecha === 'string' &&
+					rawFecha.trim() !== '' &&
+					rawFecha.trim().toLowerCase() !== 'undefined' &&
+					rawFecha.trim().toLowerCase() !== 'null');
+
+			if (hasValidFecha) {
+				toUpdate.fecha = toGuatemalaTimestamp(rawFecha);
+			} else {
+				delete toUpdate.fecha;
+			}
 		}
 
 		const results = await updateQuery(tablesName.COMPRAS, toUpdate, query);
