@@ -1,4 +1,3 @@
-import dayjs from 'dayjs';
 import { tablesName } from '../consts/names.js';
 import {
 	deleteQuery,
@@ -8,6 +7,7 @@ import {
 	updateQuery,
 } from '../db/querys.js';
 import { errorHandler } from '../utils/error.utils.js';
+import { toGuatemalaTimestamp } from '../utils/formatos.js';
 
 export const getCompra = async ({ query }, res) => {
 	try {
@@ -38,7 +38,7 @@ const compraObject = ({ correlativo, compras }) => {
 		serie: correlativo.serie,
 		tipo_transaccion: correlativo.tipo_transaccion,
 		documento: correlativo.siguiente || compras.documento,
-		fecha: compras.fecha,
+		fecha: toGuatemalaTimestamp(compras.fecha),
 		proveedor: compras.codigo,
 		descripcion: compras.descripcion,
 		total: compras.total,
@@ -51,9 +51,7 @@ export const createCompras = async ({ body }, res) => {
 		let data = body;
 		let toSave = {
 			...data,
-			fecha: dayjs(data.fecha, 'YYYY-MM-DDTHH:mm').format(
-				'YYYY-MM-DD HH:mm'
-			),
+			fecha: toGuatemalaTimestamp(data.fecha),
 		};
 
 		const results = await insertQuery(tablesName.COMPRAS, toSave);
@@ -65,7 +63,15 @@ export const createCompras = async ({ body }, res) => {
 
 export const updateCompras = async ({ query, body }, res) => {
 	try {
-		const results = await updateQuery(tablesName.COMPRAS, body, query);
+		const toUpdate = {
+			...body,
+		};
+
+		if (toUpdate.fecha) {
+			toUpdate.fecha = toGuatemalaTimestamp(toUpdate.fecha);
+		}
+
+		const results = await updateQuery(tablesName.COMPRAS, toUpdate, query);
 		return res.status(200).json(results);
 	} catch (error) {
 		errorHandler(res, error);
