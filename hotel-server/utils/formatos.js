@@ -1,9 +1,7 @@
 import dayjs from 'dayjs';
-import customParseFormat from 'dayjs/plugin/customParseFormat.js';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
 
-dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -36,12 +34,7 @@ export const dateToPostgresTimestamp = (strDate) => {
 	const [fecha, hora] = strDate.split(' ');
 	const [dia, mes, anio] = fecha.split(separatedDate);
 	const [horas, minutos, segundos] = hora.split(':');
-	const parsed = dayjs.tz(
-		`${anio}-${mes}-${dia} ${horas}:${minutos}:${segundos}`,
-		DB_TIMESTAMP_FORMAT,
-		APP_TIMEZONE
-	);
-	return parsed.format(DB_TIMESTAMP_FORMAT);
+	return `${anio}-${mes}-${dia} ${horas}:${minutos}:${segundos}`;
 };
 
 /**
@@ -74,18 +67,18 @@ export const formatTime = (date = new Date()) => {
  * @returns {string}
  */
 export const formatearFecha = (fecha, hora) => {
-	const parsed = dayjs.tz(
-		`${fecha} ${hora}`,
-		'YYYY-MM-DD HH:mm',
-		APP_TIMEZONE,
-		true
-	);
+	const fechaLimpia = `${fecha || ''}`.trim();
+	const horaLimpia = `${hora || ''}`.trim();
 
-	if (!parsed.isValid()) {
-		throw new Error(`Fecha/hora inválida: ${fecha} ${hora}`);
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaLimpia)) {
+		throw new Error(`Fecha inválida: ${fechaLimpia}`);
 	}
 
-	return parsed.format(DB_TIMESTAMP_FORMAT);
+	if (!/^\d{2}:\d{2}$/.test(horaLimpia)) {
+		throw new Error(`Hora inválida: ${horaLimpia}`);
+	}
+
+	return `${fechaLimpia} ${horaLimpia}:00`;
 };
 
 /**
@@ -97,55 +90,29 @@ export const getGuatemalaTimestamp = () => {
 };
 
 /**
- * Convierte un valor ISO con zona horaria explícita a Guatemala
- * @param {string} value
- * @returns {string|null}
+ * Convierte Date válido a timestamp Guatemala
+ * @param {Date} value
+ * @returns {string}
  */
-const parseIsoWithTimezone = (value) => {
-	const hasExplicitTimezone =
-		typeof value === 'string' &&
-		(/[zZ]$/.test(value) || /[+-]\d{2}:\d{2}$/.test(value));
-
-	if (!hasExplicitTimezone) return null;
-
+const fromDateObject = (value) => {
 	const parsed = dayjs(value);
-	if (!parsed.isValid()) return null;
-
+	if (!parsed.isValid()) return getGuatemalaTimestamp();
 	return parsed.tz(APP_TIMEZONE).format(DB_TIMESTAMP_FORMAT);
 };
 
 /**
- * Convierte un valor a timestamp PostgreSQL en hora Guatemala.
- * Acepta únicamente formatos controlados para evitar errores ambiguos.
- *
+ * Normaliza strings aceptados al formato YYYY-MM-DD HH:mm:ss
  * Acepta:
  * - YYYY-MM-DD HH:mm:ss
  * - YYYY-MM-DDTHH:mm
  * - YYYY-MM-DDTHH:mm:ss
  * - YYYY-MM-DD
- * - Date válido
- * - ISO con Z o con offset explícito
+ * - ISO con Z u offset
  *
- * @param {string|Date|null|undefined} value
+ * @param {string} value
  * @returns {string}
  */
-export const toGuatemalaTimestamp = (value) => {
-	if (value === undefined || value === null) {
-		return getGuatemalaTimestamp();
-	}
-
-	if (value instanceof Date) {
-		const parsedDate = dayjs(value);
-		if (!parsedDate.isValid()) {
-			return getGuatemalaTimestamp();
-		}
-		return parsedDate.tz(APP_TIMEZONE).format(DB_TIMESTAMP_FORMAT);
-	}
-
-	if (typeof value !== 'string') {
-		return getGuatemalaTimestamp();
-	}
-
+const normalizeStringTimestamp = (value) => {
 	const cleanValue = value.trim();
 
 	if (
@@ -157,49 +124,59 @@ export const toGuatemalaTimestamp = (value) => {
 		return getGuatemalaTimestamp();
 	}
 
-	const apiParsed = dayjs.tz(
-		cleanValue,
-		API_TIMESTAMP_FORMAT,
-		APP_TIMEZONE,
-		true
-	);
-	if (apiParsed.isValid()) {
-		return apiParsed.format(DB_TIMESTAMP_FORMAT);
+	// 1) Ya viene en formato BD
+	if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(cleanValue)) {
+		return cleanValue;
 	}
 
-	const inputParsed = dayjs.tz(
-		cleanValue,
-		INPUT_TIMESTAMP_FORMAT,
-		APP_TIMEZONE,
-		true
-	);
-	if (inputParsed.isValid()) {
-		return inputParsed.format(DB_TIMESTAMP_FORMAT);
+	// 2) datetime-local sin segundos
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(cleanValue)) {
+		return `${cleanValue.replace('T', ' ')}:00`;
 	}
 
-	const inputWithSecondsParsed = dayjs.tz(
-		cleanValue,
-		INPUT_TIMESTAMP_WITH_SECONDS_FORMAT,
-		APP_TIMEZONE,
-		true
-	);
-	if (inputWithSecondsParsed.isValid()) {
-		return inputWithSecondsParsed.format(DB_TIMESTAMP_FORMAT);
+	// 3) datetime-local con segundos
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(cleanValue)) {
+		return cleanValue.replace('T', ' ');
 	}
 
-	const dateOnlyParsed = dayjs.tz(
-		cleanValue,
-		DATE_ONLY_FORMAT,
-		APP_TIMEZONE,
-		true
-	);
-	if (dateOnlyParsed.isValid()) {
-		return dateOnlyParsed.startOf('day').format(DB_TIMESTAMP_FORMAT);
+	// 4) solo fecha
+	if (/^\d{4}-\d{2}-\d{2}$/.test(cleanValue)) {
+		return `${cleanValue} 00:00:00`;
 	}
 
-	const isoWithTimezone = parseIsoWithTimezone(cleanValue);
-	if (isoWithTimezone) {
-		return isoWithTimezone;
+	// 5) ISO con timezone explícito
+	if (/[zZ]$/.test(cleanValue) || /[+-]\d{2}:\d{2}$/.test(cleanValue)) {
+		const parsed = dayjs(cleanValue);
+		if (parsed.isValid()) {
+			return parsed.tz(APP_TIMEZONE).format(DB_TIMESTAMP_FORMAT);
+		}
+	}
+
+	// 6) Intento final con Date nativo si fuera un formato ISO raro pero válido
+	const nativeDate = new Date(cleanValue);
+	if (!Number.isNaN(nativeDate.getTime())) {
+		return fromDateObject(nativeDate);
+	}
+
+	return getGuatemalaTimestamp();
+};
+
+/**
+ * Convierte un valor a timestamp PostgreSQL en hora Guatemala
+ * @param {string|Date|null|undefined} value
+ * @returns {string}
+ */
+export const toGuatemalaTimestamp = (value) => {
+	if (value === undefined || value === null) {
+		return getGuatemalaTimestamp();
+	}
+
+	if (value instanceof Date) {
+		return fromDateObject(value);
+	}
+
+	if (typeof value === 'string') {
+		return normalizeStringTimestamp(value);
 	}
 
 	return getGuatemalaTimestamp();
