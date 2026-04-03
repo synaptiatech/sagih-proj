@@ -3,18 +3,30 @@ import { Box, Button, Card, TextField, Typography } from '@mui/material';
 import { useContext } from 'react';
 import { Controller, SubmitHandler, useForm } from 'react-hook-form';
 import swal from 'sweetalert';
+import dayjs from 'dayjs';
+
 import { URI } from '../../consts/Uri';
 import { ComprasContext } from '../../contexts/ComprasProvider';
 import { CompraType, schemaCompra } from '../../props/CompraProps';
 import { dataPost, dataUpdate } from '../../services/fetching.service';
-import { formatDateToInput, switchDateToEng } from '../../utils/Formateo';
 import { handleError } from '../../utils/HandleError';
 import { PickProveedor } from '../compras/PickProveedor';
 import { FormInput } from '../input/FormInput';
-import dayjs from 'dayjs';
+
+const toDatetimeLocal = (value?: string | Date | null) => {
+	if (!value) return dayjs().format('YYYY-MM-DDTHH:mm');
+
+	const parsed = dayjs(value);
+	if (parsed.isValid()) {
+		return parsed.format('YYYY-MM-DDTHH:mm');
+	}
+
+	return dayjs().format('YYYY-MM-DDTHH:mm');
+};
 
 const FormCompra = ({ onClose }: { onClose: () => void }) => {
 	const { state, dispatch } = useContext(ComprasContext);
+
 	const {
 		control,
 		setValue,
@@ -26,30 +38,20 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 			serie: state?.compras?.serie || '',
 			tipo_transaccion: state?.correlativo?.tipo_transaccion || '',
 			documento: state?.compras?.documento || 0,
-			fecha: state.compras.fecha
-				? dayjs(
-						state?.compras?.fecha,
-						'YYYY-MM-DDThh:mm:ss.SSSZ'
-				  ).format('YYYY-MM-DD hh:mm')
-				: dayjs().format('YYYY-MM-DD hh:mm'),
-			// formatDateToInput({
-			// 	date: state.compras.fecha
-			// 		? new Date(switchDateToEng(state.compras.fecha))
-			// 		: new Date(),
-			// })
+			fecha: toDatetimeLocal(state?.compras?.fecha),
 			descripcion: state?.compras?.descripcion || '',
 			proveedor: state?.compras?.proveedor || 0,
-			total: state.compras.total
+			total: state?.compras?.total
 				? Number(
-						state?.compras?.total
+						state.compras.total
 							.toString()
 							.replace('Q. ', '')
 							.replace(',', '')
 				  )
 				: 0,
-			iva: state.compras.iva
+			iva: state?.compras?.iva
 				? Number(
-						state?.compras?.iva
+						state.compras.iva
 							.toString()
 							.replace('Q. ', '')
 							.replace(',', '')
@@ -62,12 +64,12 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 
 	const onSubmit: SubmitHandler<CompraType> = async (data) => {
 		try {
-			console.log({ data, compras: state.compras });
-			if (state.compras.codigo != undefined) {
-				console.log('Update :', {
-					...data,
-					proveedor: state.compras.proveedor,
-				});
+			const fechaNormalizada =
+				typeof data.fecha === 'string' && data.fecha.trim() !== ''
+					? dayjs(data.fecha).format('YYYY-MM-DDTHH:mm')
+					: dayjs().format('YYYY-MM-DDTHH:mm');
+
+			if (state.compras.codigo !== undefined) {
 				await dataUpdate({
 					path: URI.compra,
 					params: {
@@ -76,24 +78,23 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 					data: {
 						...data,
 						proveedor: state.compras.proveedor,
-						fecha: dayjs(data.fecha, 'YYYY-MM-DDTHH:mm').format(
-							'YYYY-MM-DDTHH:mm'
-						),
+						fecha: fechaNormalizada,
 					},
 				});
 			} else {
-				console.log('Create :', data);
 				await dataPost({
 					path: URI.compra,
 					data: {
 						...data,
 						proveedor: state.compras.proveedor,
+						fecha: fechaNormalizada,
 					},
 				});
 			}
+
 			swal(
 				'Compra guardada',
-				'La compra se guardo correctamente',
+				'La compra se guardó correctamente',
 				'success'
 			);
 			reset();
@@ -104,7 +105,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 	};
 
 	return (
-		<Box sx={{}}>
+		<Box>
 			<form onSubmit={handleSubmit(onSubmit)}>
 				<Card
 					sx={{
@@ -115,6 +116,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 						width: '100%',
 					}}>
 					<Typography>Formulario de compras</Typography>
+
 					<Box
 						sx={{
 							display: 'grid',
@@ -126,7 +128,6 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 							width: '100%',
 							gap: 2,
 						}}>
-						{/* TITRAN */}
 						<Controller
 							control={control}
 							name='tipo_transaccion'
@@ -138,7 +139,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 								/>
 							)}
 						/>
-						{/* SERIE */}
+
 						<Controller
 							control={control}
 							name='serie'
@@ -150,6 +151,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 								/>
 							)}
 						/>
+
 						<Controller
 							control={control}
 							name='documento'
@@ -161,19 +163,19 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 								/>
 							)}
 						/>
-						{/* FECHA */}
+
 						<FormInput
 							control={control as any}
 							name='fecha'
 							label='Fecha de compra'
 							type='datetime-local'
 							customOnChange={(value) => {
-								console.log('e :', value);
 								setValue('fecha', value);
 							}}
 						/>
-						{/* PROVEEDOR */}
+
 						<PickProveedor />
+
 						<TextField
 							label='Direccion'
 							variant='standard'
@@ -182,6 +184,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 								readOnly: true,
 							}}
 						/>
+
 						<TextField
 							label='Telefono'
 							variant='standard'
@@ -190,6 +193,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 								readOnly: true,
 							}}
 						/>
+
 						<TextField
 							label='NIT'
 							variant='standard'
@@ -198,7 +202,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 								readOnly: true,
 							}}
 						/>
-						{/* DESCRIPCION */}
+
 						<Controller
 							control={control}
 							name='descripcion'
@@ -214,7 +218,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 								/>
 							)}
 						/>
-						{/* TOTAL */}
+
 						<Controller
 							control={control}
 							name='total'
@@ -251,7 +255,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 								/>
 							)}
 						/>
-						{/* IVA */}
+
 						<Controller
 							control={control}
 							name='iva'
@@ -279,6 +283,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 								/>
 							)}
 						/>
+
 						<Button
 							variant='contained'
 							color='primary'
