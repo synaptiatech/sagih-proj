@@ -74,9 +74,18 @@ export const formatTime = (date = new Date()) => {
  * @returns {string}
  */
 export const formatearFecha = (fecha, hora) => {
-	return dayjs
-		.tz(`${fecha} ${hora}`, 'YYYY-MM-DD HH:mm', APP_TIMEZONE)
-		.format(DB_TIMESTAMP_FORMAT);
+	const parsed = dayjs.tz(
+		`${fecha} ${hora}`,
+		'YYYY-MM-DD HH:mm',
+		APP_TIMEZONE,
+		true
+	);
+
+	if (!parsed.isValid()) {
+		throw new Error(`Fecha/hora inválida: ${fecha} ${hora}`);
+	}
+
+	return parsed.format(DB_TIMESTAMP_FORMAT);
 };
 
 /**
@@ -128,65 +137,70 @@ export const toGuatemalaTimestamp = (value) => {
 	if (value instanceof Date) {
 		const parsedDate = dayjs(value);
 		if (!parsedDate.isValid()) {
-			throw new Error(`Fecha inválida recibida como Date: ${value}`);
+			return getGuatemalaTimestamp();
 		}
 		return parsedDate.tz(APP_TIMEZONE).format(DB_TIMESTAMP_FORMAT);
 	}
 
-	if (typeof value === 'string') {
-		const cleanValue = value.trim();
-
-		if (cleanValue === '') {
-			return getGuatemalaTimestamp();
-		}
-
-		const apiParsed = dayjs.tz(
-			cleanValue,
-			API_TIMESTAMP_FORMAT,
-			APP_TIMEZONE,
-			true
-		);
-		if (apiParsed.isValid()) {
-			return apiParsed.format(DB_TIMESTAMP_FORMAT);
-		}
-
-		const inputParsed = dayjs.tz(
-			cleanValue,
-			INPUT_TIMESTAMP_FORMAT,
-			APP_TIMEZONE,
-			true
-		);
-		if (inputParsed.isValid()) {
-			return inputParsed.format(DB_TIMESTAMP_FORMAT);
-		}
-
-		const inputWithSecondsParsed = dayjs.tz(
-			cleanValue,
-			INPUT_TIMESTAMP_WITH_SECONDS_FORMAT,
-			APP_TIMEZONE,
-			true
-		);
-		if (inputWithSecondsParsed.isValid()) {
-			return inputWithSecondsParsed.format(DB_TIMESTAMP_FORMAT);
-		}
-
-		const dateOnlyParsed = dayjs.tz(
-			cleanValue,
-			DATE_ONLY_FORMAT,
-			APP_TIMEZONE,
-			true
-		);
-		if (dateOnlyParsed.isValid()) {
-			return dateOnlyParsed.startOf('day').format(DB_TIMESTAMP_FORMAT);
-		}
-
-		const isoWithTimezone = parseIsoWithTimezone(cleanValue);
-		if (isoWithTimezone) {
-			return isoWithTimezone;
-		}
-
-		throw new Error(`Fecha inválida recibida: ${cleanValue}`);
+	if (typeof value !== 'string') {
+		return getGuatemalaTimestamp();
 	}
 
-	throw new Error(`Tipo de fecha no soportado: ${typeof value}`);
+	const cleanValue = value.trim();
+
+	if (
+		cleanValue === '' ||
+		cleanValue.toLowerCase() === 'undefined' ||
+		cleanValue.toLowerCase() === 'null' ||
+		cleanValue.toLowerCase() === 'invalid date'
+	) {
+		return getGuatemalaTimestamp();
+	}
+
+	const apiParsed = dayjs.tz(
+		cleanValue,
+		API_TIMESTAMP_FORMAT,
+		APP_TIMEZONE,
+		true
+	);
+	if (apiParsed.isValid()) {
+		return apiParsed.format(DB_TIMESTAMP_FORMAT);
+	}
+
+	const inputParsed = dayjs.tz(
+		cleanValue,
+		INPUT_TIMESTAMP_FORMAT,
+		APP_TIMEZONE,
+		true
+	);
+	if (inputParsed.isValid()) {
+		return inputParsed.format(DB_TIMESTAMP_FORMAT);
+	}
+
+	const inputWithSecondsParsed = dayjs.tz(
+		cleanValue,
+		INPUT_TIMESTAMP_WITH_SECONDS_FORMAT,
+		APP_TIMEZONE,
+		true
+	);
+	if (inputWithSecondsParsed.isValid()) {
+		return inputWithSecondsParsed.format(DB_TIMESTAMP_FORMAT);
+	}
+
+	const dateOnlyParsed = dayjs.tz(
+		cleanValue,
+		DATE_ONLY_FORMAT,
+		APP_TIMEZONE,
+		true
+	);
+	if (dateOnlyParsed.isValid()) {
+		return dateOnlyParsed.startOf('day').format(DB_TIMESTAMP_FORMAT);
+	}
+
+	const isoWithTimezone = parseIsoWithTimezone(cleanValue);
+	if (isoWithTimezone) {
+		return isoWithTimezone;
+	}
+
+	return getGuatemalaTimestamp();
 };
