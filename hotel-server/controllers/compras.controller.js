@@ -39,18 +39,11 @@ export const getCompras = async ({ query, body }, res) => {
 export const compraObject = ({ correlativo, compras }) => {
 	const rawFecha = compras?.fecha;
 
-	const hasValidFecha =
-		rawFecha instanceof Date ||
-		(typeof rawFecha === 'string' &&
-			rawFecha.trim() !== '' &&
-			rawFecha.trim().toLowerCase() !== 'undefined' &&
-			rawFecha.trim().toLowerCase() !== 'null');
-
 	return {
 		serie: correlativo.serie,
 		tipo_transaccion: correlativo.tipo_transaccion,
 		documento: correlativo.siguiente || compras.documento,
-		fecha: hasValidFecha
+		fecha: rawFecha
 			? toGuatemalaTimestamp(rawFecha)
 			: getGuatemalaTimestamp(),
 		proveedor: compras.codigo || compras.proveedor,
@@ -63,19 +56,11 @@ export const compraObject = ({ correlativo, compras }) => {
 export const createCompras = async ({ body }, res) => {
 	try {
 		const data = body || {};
-		const rawFecha = data.fecha;
-
-		const hasValidFecha =
-			rawFecha instanceof Date ||
-			(typeof rawFecha === 'string' &&
-				rawFecha.trim() !== '' &&
-				rawFecha.trim().toLowerCase() !== 'undefined' &&
-				rawFecha.trim().toLowerCase() !== 'null');
 
 		const toSave = {
 			...data,
-			fecha: hasValidFecha
-				? toGuatemalaTimestamp(rawFecha)
+			fecha: data.fecha
+				? toGuatemalaTimestamp(data.fecha)
 				: getGuatemalaTimestamp(),
 		};
 
@@ -93,19 +78,14 @@ export const updateCompras = async ({ query, body }, res) => {
 		};
 
 		if (Object.prototype.hasOwnProperty.call(toUpdate, 'fecha')) {
-			const rawFecha = toUpdate.fecha;
-
-			const hasValidFecha =
-				rawFecha instanceof Date ||
-				(typeof rawFecha === 'string' &&
-					rawFecha.trim() !== '' &&
-					rawFecha.trim().toLowerCase() !== 'undefined' &&
-					rawFecha.trim().toLowerCase() !== 'null');
-
-			if (hasValidFecha) {
-				toUpdate.fecha = toGuatemalaTimestamp(rawFecha);
-			} else {
+			if (
+				toUpdate.fecha === null ||
+				toUpdate.fecha === undefined ||
+				`${toUpdate.fecha}`.trim() === ''
+			) {
 				delete toUpdate.fecha;
+			} else {
+				toUpdate.fecha = toGuatemalaTimestamp(toUpdate.fecha);
 			}
 		}
 
