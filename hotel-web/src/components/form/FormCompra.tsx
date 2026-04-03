@@ -25,7 +25,7 @@ const toDatetimeLocal = (value?: string | Date | null) => {
 };
 
 const FormCompra = ({ onClose }: { onClose: () => void }) => {
-	const { state, dispatch } = useContext(ComprasContext);
+	const { state } = useContext(ComprasContext);
 
 	const {
 		control,
@@ -114,7 +114,8 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 						gap: 2,
 						padding: 2,
 						width: '100%',
-					}}>
+					}}
+				>
 					<Typography>Formulario de compras</Typography>
 
 					<Box
@@ -127,16 +128,13 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 							placeItems: 'flex-end',
 							width: '100%',
 							gap: 2,
-						}}>
+						}}
+					>
 						<Controller
 							control={control}
 							name='tipo_transaccion'
 							render={({ field }) => (
-								<TextField
-									{...field}
-									label='Tipo'
-									variant='standard'
-								/>
+								<TextField {...field} label='Tipo' variant='standard' />
 							)}
 						/>
 
@@ -144,11 +142,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 							control={control}
 							name='serie'
 							render={({ field }) => (
-								<TextField
-									{...field}
-									label='Serie'
-									variant='standard'
-								/>
+								<TextField {...field} label='Serie' variant='standard' />
 							)}
 						/>
 
@@ -156,11 +150,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 							control={control}
 							name='documento'
 							render={({ field }) => (
-								<TextField
-									{...field}
-									label='Documento'
-									variant='standard'
-								/>
+								<TextField {...field} label='Documento' variant='standard' />
 							)}
 						/>
 
@@ -180,27 +170,21 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 							label='Direccion'
 							variant='standard'
 							value={state?.compras?.direccion || ''}
-							inputProps={{
-								readOnly: true,
-							}}
+							inputProps={{ readOnly: true }}
 						/>
 
 						<TextField
 							label='Telefono'
 							variant='standard'
 							value={state?.compras?.telefono || ''}
-							inputProps={{
-								readOnly: true,
-							}}
+							inputProps={{ readOnly: true }}
 						/>
 
 						<TextField
 							label='NIT'
 							variant='standard'
 							value={state?.compras?.nit || ''}
-							inputProps={{
-								readOnly: true,
-							}}
+							inputProps={{ readOnly: true }}
 						/>
 
 						<Controller
@@ -212,9 +196,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 									label='Descripción'
 									variant='standard'
 									error={!!errors.descripcion}
-									helperText={
-										errors.descripcion?.message || ''
-									}
+									helperText={errors.descripcion?.message || ''}
 								/>
 							)}
 						/>
@@ -231,9 +213,7 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 										setValue(
 											'iva',
 											Number(
-												parseFloat(
-													`${+e.target.value / 1.12}`
-												).toFixed(2)
+												parseFloat(`${+e.target.value / 1.12}`).toFixed(2)
 											)
 										);
 									}}
@@ -245,7 +225,8 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 													alignItems: 'center',
 													justifyContent: 'center',
 													width: '50px',
-												}}>
+												}}
+											>
 												Q.
 											</Box>
 										),
@@ -272,7 +253,8 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 													alignItems: 'center',
 													justifyContent: 'center',
 													width: '50px',
-												}}>
+												}}
+											>
 												Q.
 											</Box>
 										),
@@ -288,7 +270,8 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 							variant='contained'
 							color='primary'
 							type='submit'
-							fullWidth>
+							fullWidth
+						>
 							Guardar
 						</Button>
 					</Box>
