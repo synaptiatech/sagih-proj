@@ -7,7 +7,10 @@ import {
 	updateQuery,
 } from '../db/querys.js';
 import { errorHandler } from '../utils/error.utils.js';
-import { toGuatemalaTimestamp } from '../utils/formatos.js';
+import {
+	getGuatemalaTimestamp,
+	toGuatemalaTimestamp,
+} from '../utils/formatos.js';
 
 export const getCompra = async ({ query }, res) => {
 	try {
@@ -33,12 +36,14 @@ export const getCompras = async ({ query, body }, res) => {
 	}
 };
 
-const compraObject = ({ correlativo, compras }) => {
+export const compraObject = ({ correlativo, compras }) => {
 	return {
 		serie: correlativo.serie,
 		tipo_transaccion: correlativo.tipo_transaccion,
 		documento: correlativo.siguiente || compras.documento,
-		fecha: toGuatemalaTimestamp(compras.fecha),
+		fecha: compras.fecha
+			? toGuatemalaTimestamp(compras.fecha)
+			: getGuatemalaTimestamp(),
 		proveedor: compras.codigo,
 		descripcion: compras.descripcion,
 		total: compras.total,
@@ -48,14 +53,17 @@ const compraObject = ({ correlativo, compras }) => {
 
 export const createCompras = async ({ body }, res) => {
 	try {
-		let data = body;
-		let toSave = {
+		const data = body || {};
+
+		const toSave = {
 			...data,
-			fecha: toGuatemalaTimestamp(data.fecha),
+			fecha: data.fecha
+				? toGuatemalaTimestamp(data.fecha)
+				: getGuatemalaTimestamp(),
 		};
 
 		const results = await insertQuery(tablesName.COMPRAS, toSave);
-		return res.status(200).json('OK');
+		return res.status(200).json(results);
 	} catch (error) {
 		errorHandler(res, error);
 	}
@@ -67,8 +75,15 @@ export const updateCompras = async ({ query, body }, res) => {
 			...body,
 		};
 
-		if (toUpdate.fecha) {
+		if (
+			Object.prototype.hasOwnProperty.call(toUpdate, 'fecha') &&
+			toUpdate.fecha !== null &&
+			toUpdate.fecha !== undefined &&
+			`${toUpdate.fecha}`.trim() !== ''
+		) {
 			toUpdate.fecha = toGuatemalaTimestamp(toUpdate.fecha);
+		} else if (Object.prototype.hasOwnProperty.call(toUpdate, 'fecha')) {
+			delete toUpdate.fecha;
 		}
 
 		const results = await updateQuery(tablesName.COMPRAS, toUpdate, query);
