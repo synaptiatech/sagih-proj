@@ -213,8 +213,9 @@ const FormCompra = ({ onClose }: { onClose: () => void }) => {
 										setValue(
 											'iva',
 											Number(
-												parseFloat(`${+e.target.value / 1.12}`).toFixed(2)
+												parseFloat(`${+e.target.value -+e.target.value / 1.12}`).toFixed(2)
 											)
+											
 										);
 									}}
 									InputProps={{
