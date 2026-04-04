@@ -373,37 +373,37 @@ const getCustomWhereClause = (query, acc) => {
  * @param {number} acc Acumulado de valores
  * @returns {[string, any[]]} Cláusula WHERE
  */
-const getFilterWhereClause = async (table, q, acc) => {
-	const columns = await getColumnsNames(table);
+const getFilterWhereClause = async (table, q, acc = 0) => {
+	if (!q || `${q}`.trim() === '') {
+		return ['', []];
+	}
+
 	const values = [];
+	const safeColumnsByTable = {
+		v_pp_tranenc: [
+			'serie',
+			'tipo_transaccion',
+			'documento',
+			'fecha',
+			'nombre',
+			'descripcion',
+			'iva',
+			'total',
+		],
+	};
+
+	const columns = safeColumnsByTable[table];
+
+	if (!columns || columns.length === 0) {
+		return ['', []];
+	}
 
 	const filter = columns
 		.map((column, index) => {
 			const placeholder = `$${index + acc + 1}`;
-
-			if (column.udt_name === 'text' || column.udt_name === 'varchar') {
-				values.push(`%${q}%`);
-				return `${column.column_name} ILIKE ${placeholder}`;
-			}
-
-			if (
-				column.udt_name === 'timestamp' ||
-				column.udt_name === 'timestamptz' ||
-				column.udt_name === 'date'
-			) {
-				values.push(`%${q}%`);
-				return `${column.column_name}::text ILIKE ${placeholder}`;
-			}
-
-			const numericValue = Number(q);
-			if (!Number.isNaN(numericValue)) {
-				values.push(numericValue);
-				return `${column.column_name} = ${placeholder}`;
-			}
-
-			return null;
+			values.push(`%${q}%`);
+			return `COALESCE(${column}::text, '') ILIKE ${placeholder}::text`;
 		})
-		.filter(Boolean)
 		.join(' OR ');
 
 	return [filter, values];
