@@ -26,10 +26,27 @@ export const getCompra = async ({ query }, res) => {
 
 export const getCompras = async ({ query, body }, res) => {
 	try {
+		const ultimoCierre = await getOneQueryMethod({
+			table: tablesName.CIERRE,
+			sort: { fecha_cierre: 'DESC' },
+		});
+
+		const customWhere = [];
+
+		if (ultimoCierre?.fecha_cierre) {
+			customWhere.push({
+				column: 'fecha',
+				operator: '>',
+				value: toGuatemalaTimestamp(ultimoCierre.fecha_cierre),
+			});
+		}
+
 		const results = await getQueryMethod({
 			...body,
 			query,
+			customWhere: customWhere.length > 0 ? customWhere : undefined,
 		});
+
 		return res.status(200).json(results);
 	} catch (error) {
 		errorHandler(res, error);
