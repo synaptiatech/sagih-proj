@@ -31,9 +31,12 @@ const Pago = () => {
 	const [loading, setLoading] = useState(false);
 
 	const { data, error, isLoading, refetch } = useFetch({
-		path: `${URI.pago}/all`,
+		path: `${URI.recibo}/all`,
+		table: 'v_rc_encabezado',
 		pageNumber: stateFetch.currentPage,
 		pageSize: stateFetch.limit,
+		sort: { serie: 'ASC' },
+		query: { tipo_transaccion: 'RC' },
 		q: stateFetch.q,
 	});
 
@@ -56,25 +59,21 @@ const Pago = () => {
 			setLoading(true);
 			const { data } = await downloadFile({
 				path: `${URI.reporte}/master`,
-				name: 'Pagos',
-				table: 'v_rc_detalle',
+				name: 'Recibos',
+				table: 'v_rc_encabezado',
 				columns: {
 					serie: 'Serie',
-					tipo_transaccion: 'Tipo',
 					documento: 'Documento',
-					serie_fac: 'Serie factura',
-					ti_tran_fac: 'Tipo factura',
-					documento_fac: 'Documento factura',
-					fecha: 'Fecha / Hora',
-					descripcion: 'Descripción',
-					tp_nombre: 'Tipo pago',
-					monto: 'Monto',
+					c_nombre: 'Cliente',
+					v_nombre: 'Vendedor',
+					fecha: 'Fecha',
+					abono: 'Abono',
 				},
 				sumatoria: {
-					monto: 'Monto',
+					abono: 'Abono',
 				},
 			});
-			downloadFileByBloodPart(data, 'Pagos');
+			downloadFileByBloodPart(data, 'Recibos');
 		} catch (error) {
 			handleError('Error al descargar el archivo', error);
 		} finally {
@@ -87,7 +86,7 @@ const Pago = () => {
 			setLoading(true);
 			const { data } = await downloadFile({
 				path: `${URI.reporte}/master`,
-				name: 'Pago',
+				name: 'Recibos',
 				table: 'v_rc_detalle',
 				columns: {
 					serie: 'Serie',
@@ -96,7 +95,7 @@ const Pago = () => {
 					serie_fac: 'Serie factura',
 					ti_tran_fac: 'Tipo transacción factura',
 					documento_fac: 'Documento factura',
-					fecha: 'Fecha / Hora',
+					fecha: 'Fecha',
 					descripcion: 'Descripción',
 					tp_nombre: 'Tipo pago',
 					monto: 'Monto',
@@ -105,12 +104,12 @@ const Pago = () => {
 					serie: 'Serie',
 					tipo_transaccion: 'Tipo transacción',
 					documento: 'Documento',
-					fecha: 'Fecha / Hora',
+					fecha: 'Fecha',
 				},
 				detailColumns: {
-					serie_fac: 'Serie factura',
-					ti_tran_fac: 'Tipo factura',
-					documento_fac: 'Documento factura',
+					serie_fac: 'Serie',
+					ti_tran_fac: 'Tipo',
+					documento_fac: 'Documento',
 					descripcion: 'Descripción',
 					tp_nombre: 'Tipo pago',
 					monto: 'Monto',
@@ -121,7 +120,7 @@ const Pago = () => {
 					tipo_transaccion: item.tipo_transaccion,
 				},
 			});
-			downloadFileByBloodPart(data, 'Pago');
+			downloadFileByBloodPart(data, 'Recibos');
 		} catch (error) {
 			handleError('Error al descargar el archivo', error);
 		} finally {
@@ -134,30 +133,22 @@ const Pago = () => {
 	};
 
 	const onEdit = async (item: any, index: number) => {
-		try {
-			const { data } = await dataGet({
-				path: `${URI.transaccion}/documento`,
-				params: {
-					serie: item.serie_fac,
-					tipo_transaccion: item.ti_tran_fac,
-					documento: item.documento_fac,
-				},
-			});
-
-			tranDispatch({
-				type: transactTypes.SET_TRAN_DATA,
-				payload: { ...data, operacion: 'CI', mode: 'UPDATE' },
-			});
-
-			setShowModal(true);
-		} catch (error) {
-			handleError('Error al cargar el pago', error);
-		}
+		const { data } = await dataGet({
+			path: `${URI.transaccion}/documento`,
+			params: {
+				serie: item.serie_fac,
+				tipo_transaccion: item.ti_tran_fac,
+				documento: item.documento_fac,
+			},
+		});
+		tranDispatch({
+			type: transactTypes.SET_TRAN_DATA,
+			payload: { ...data, operacion: 'CI', mode: 'UPDATE' },
+		});
+		setShowModal(true);
 	};
 
-	const onDelete = (item: any, index: number) => {
-		// pendiente según tu lógica actual
-	};
+	const onDelete = (item: any, index: number) => {};
 
 	useEffect(() => {
 		if (data) {
@@ -190,14 +181,14 @@ const Pago = () => {
 					<MiTabla
 						headers={{
 							serie: 'Serie',
-							tipo_transaccion: 'Tipo',
 							documento: 'Documento',
-							fecha: 'Fecha / Hora',
-							tipo_pago_nombre: 'Tipo pago',
-							monto: 'Monto',
+							c_nombre: 'Cliente',
+							v_nombre: 'Vendedor',
+							fecha: 'Fecha',
+							abono: 'Abono',
 						}}
 						rows={data?.rows || []}
-						sumatoria='monto'
+						sumatoria='abono'
 						onEdit={onEdit}
 						onDownload={onDownloadOne}
 						onDelete={onDelete}
