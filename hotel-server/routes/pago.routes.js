@@ -1,21 +1,20 @@
-'use strict';
-
 import { Router } from 'express';
 import {
 	createPago,
 	deletePago,
 	getAllPago,
 	getPago,
+	getTiposPago,
 	updatePago,
 } from '../controllers/pago.controller.js';
-import { ensureAuth } from '../middlewares/auth.js';
 
-var api = Router();
+const router = Router();
 
-api.get('/', ensureAuth, getPago);
-api.post('/all', ensureAuth, getAllPago);
-api.post('/', ensureAuth, createPago);
-api.put('/', ensureAuth, updatePago);
-api.post('/delete', ensureAuth, deletePago);
+router.get('/', getPago);
+router.get('/tipos', getTiposPago);
+router.post('/all', getAllPago);
+router.post('/', createPago);
+router.put('/', updatePago);
+router.delete('/', deletePago);
 
-export default api;
+export default router;
