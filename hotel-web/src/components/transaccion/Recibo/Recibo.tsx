@@ -28,14 +28,14 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [detalle, setDetalle] = useState<RCDetType>({} as RCDetType);
 
+	// 🔥 CAMBIO CLAVE AQUÍ
 	const {
 		data: pagos,
 		isLoading,
 		isError,
 		refetch,
 	} = useFetch({
-		path: `${URI.pago}/all`,
-		table: 'tipo_pago',
+		path: `${URI.pago}/tipos`,
 	});
 
 	const onSave = async () => {
@@ -83,6 +83,7 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 				payload: detalle,
 			});
 		}
+
 		setIsEditing(false);
 		setDetalle({
 			...rcDetInit,
@@ -95,7 +96,6 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 
 	const onDelete = async () => {
 		try {
-			console.log('Eliminar pago', detalle);
 			if (detalle.codigo !== undefined) {
 				swal({
 					title: '¿Está seguro?',
@@ -106,7 +106,7 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 				}).then(async (willDelete) => {
 					if (!willDelete) return;
 
-					const result = await dataPost({
+					await dataPost({
 						path: `${URI.pago}/delete`,
 						data: {
 							codigo: detalle.codigo,
@@ -115,14 +115,16 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 							documento: detalle?.documento,
 						},
 					});
-					console.log({ result });
+
 					setIsEditing(false);
 					setDetalle({} as RCDetType);
+
 					swal(
 						'Pago eliminado',
 						'El pago ha sido eliminado',
 						'success'
 					);
+
 					refetch();
 				});
 			} else {
@@ -179,6 +181,7 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 
 	return (
 		<>
+			{/* 🔥 SELECTOR TIPO DE PAGO */}
 			<Autocomplete
 				options={pagos?.rows || []}
 				getOptionLabel={(option: TiposType) => option.nombre}
@@ -199,6 +202,7 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 					/>
 				)}
 			/>
+
 			<TextField
 				sx={{ width: 150 }}
 				label='Descripción'
@@ -211,6 +215,7 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 					});
 				}}
 			/>
+
 			<TextField
 				sx={{ width: 150 }}
 				label='Monto'
@@ -229,6 +234,7 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 					),
 				}}
 			/>
+
 			{isEditing && (
 				<>
 					<Button variant='text' color='secondary' onClick={onCancel}>
@@ -239,6 +245,7 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 					</Button>
 				</>
 			)}
+
 			<Button
 				variant='outlined'
 				color='primary'
@@ -253,9 +260,9 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 				}>
 				{isEditing ? 'Guardar cambios' : 'Agregar pago'}
 			</Button>
-			{/* SALDO / TOTAL */}
+
 			<SaldoxTotal />
-			{/* PAGOS REALIZADOS */}
+
 			{!isEditing && (
 				<Autocomplete
 					options={state.rcDetalle || []}
