@@ -6,7 +6,7 @@ import {
 	getPago,
 	getTiposPago,
 	updatePago,
-} from '../controllers/pago.controller.js';
+} from '../controllers/pago.controller.js'; 
 
 const router = Router();
 
