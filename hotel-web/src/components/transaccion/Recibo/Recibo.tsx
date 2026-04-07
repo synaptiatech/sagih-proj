@@ -10,12 +10,11 @@ import swal from 'sweetalert';
 import { URI } from '../../../consts/Uri';
 import { TransactContext } from '../../../contexts/TransactProvider';
 import { transactTypes } from '../../../hooks/transactReducer';
-import { useFetch } from '../../../hooks/useFetch';
+import { useFetchData } from '../../../hooks/useFetch';
 import { RCDetType, rcDetInit } from '../../../props/ReciboProps';
 import { TiposType } from '../../../props/Tipos';
 import {
 	dataDelete,
-	dataPost,
 	dataUpdate,
 } from '../../../services/fetching.service';
 
@@ -28,13 +27,12 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [detalle, setDetalle] = useState<RCDetType>({} as RCDetType);
 
-	// 🔥 CAMBIO CLAVE AQUÍ
 	const {
 		data: pagos,
 		isLoading,
 		isError,
 		refetch,
-	} = useFetch({
+	} = useFetchData({
 		path: `${URI.pago}/tipos`,
 	});
 
@@ -106,9 +104,9 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 				}).then(async (willDelete) => {
 					if (!willDelete) return;
 
-					await dataPost({
-						path: `${URI.pago}/delete`,
-						data: {
+					await dataDelete({
+						path: URI.pago,
+						params: {
 							codigo: detalle.codigo,
 							serie: detalle.serie,
 							tipo_transaccion: detalle.tipo_transaccion,
@@ -181,7 +179,6 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 
 	return (
 		<>
-			{/* 🔥 SELECTOR TIPO DE PAGO */}
 			<Autocomplete
 				options={pagos?.rows || []}
 				getOptionLabel={(option: TiposType) => option.nombre}
