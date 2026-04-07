@@ -5,6 +5,7 @@ import {
 	deleteQuery,
 	getFromQuery,
 	getOneQueryMethod,
+	getQueryMethod,
 	insertQuery,
 	updateQuery,
 } from '../db/querys.js';
@@ -14,6 +15,9 @@ import {
 	toGuatemalaTimestamp,
 } from '../utils/formatos.js';
 
+/**
+ * Obtener un tipo de pago por query
+ */
 export async function getPago({ query }, res) {
 	try {
 		const results = await getOneQueryMethod({
@@ -26,6 +30,29 @@ export async function getPago({ query }, res) {
 	}
 }
 
+/**
+ * Obtener catálogo de tipos de pago
+ * NUEVO: usar este endpoint para llenar combos/selects de tipo de pago
+ */
+export async function getTiposPago(req, res) {
+	try {
+		const results = await getQueryMethod({
+			table: tablesName.TIPO_PAGO,
+			sort: { nombre: 'ASC' },
+		});
+
+		res.status(200).json(results);
+	} catch (error) {
+		errorHandler(res, error);
+	}
+}
+
+/**
+ * Obtener pagos reales para el grid
+ * - Solo posteriores al último cierre
+ * - Fecha/hora real
+ * - Orden descendente por timestamp real
+ */
 export async function getAllPago({ body }, res) {
 	try {
 		const pageNumber = Number(body?.pageNumber || 1);
@@ -47,13 +74,11 @@ export async function getAllPago({ body }, res) {
 		const values = [];
 		const filters = [];
 
-		// Mostrar solo pagos posteriores al último cierre
 		if (ultimoCierre) {
 			values.push(toGuatemalaTimestamp(ultimoCierre));
 			filters.push(`rd.fecha > $${values.length}::timestamp`);
 		}
 
-		// Búsqueda global segura
 		if (q !== '') {
 			values.push(`%${q}%`);
 			const searchPlaceholder = `$${values.length}`;
@@ -131,10 +156,12 @@ export async function getAllPago({ body }, res) {
 	}
 }
 
+/**
+ * Crear tipo de pago
+ * Mantiene compatibilidad con tu comportamiento actual
+ */
 export async function createPago({ body }, res) {
 	try {
-		// Mantengo tu comportamiento actual:
-		// createPago crea registros en el catálogo de tipo_pago
 		const results = await insertQuery(tablesName.TIPO_PAGO, body);
 		res.status(200).json(results);
 	} catch (error) {
@@ -142,6 +169,9 @@ export async function createPago({ body }, res) {
 	}
 }
 
+/**
+ * Actualizar detalle de pago/recibo
+ */
 export async function updatePago({ query, body }, res) {
 	try {
 		const toUpdate = {
@@ -167,6 +197,10 @@ export async function updatePago({ query, body }, res) {
 	}
 }
 
+/**
+ * Eliminar pago/detalle de recibo
+ * Si ya no quedan detalles, elimina encabezado de recibo
+ */
 export async function deletePago({ body }, res) {
 	try {
 		await deleteQuery(tablesName.RC_DETALLE, {
