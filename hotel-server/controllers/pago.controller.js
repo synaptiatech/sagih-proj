@@ -5,7 +5,7 @@ import {
 	deleteQuery,
 	getFromQuery,
 	getOneQueryMethod,
-	getQueryMethod,
+	getQueryMethod, 
 	insertQuery,
 	updateQuery,
 } from '../db/querys.js';
