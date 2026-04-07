@@ -5,15 +5,12 @@ import {
 	deleteQuery,
 	getFromQuery,
 	getOneQueryMethod,
-	getQueryMethod, 
+	getQueryMethod,
 	insertQuery,
 	updateQuery,
 } from '../db/querys.js';
 import { errorHandler } from '../utils/error.utils.js';
-import {
-	getGuatemalaTimestamp,
-	toGuatemalaTimestamp,
-} from '../utils/formatos.js';
+import { toGuatemalaTimestamp } from '../utils/formatos.js';
 
 /**
  * Obtener un tipo de pago por query
@@ -59,6 +56,19 @@ export async function getAllPago({ body }, res) {
 		const pageSize = Number(body?.pageSize || 10);
 		const offset = (pageNumber - 1) * pageSize;
 		const q = `${body?.q || ''}`.trim();
+
+		if (body?.table === tablesName.TIPO_PAGO) {
+			const results = await getQueryMethod({
+				table: tablesName.TIPO_PAGO,
+				columns: body?.columns || {},
+				sort: body?.sort || { nombre: 'ASC' },
+				q,
+				pageNumber,
+				pageSize,
+			});
+
+			return res.status(200).json(results);
+		}
 
 		const cierreRows = await getFromQuery({
 			sql: `
@@ -201,10 +211,10 @@ export async function updatePago({ query, body }, res) {
  * Eliminar pago/detalle de recibo
  * Si ya no quedan detalles, elimina encabezado de recibo
  */
-export async function deletePago({ body }, res) {
+export async function deletePago({ query }, res) {
 	try {
 		await deleteQuery(tablesName.RC_DETALLE, {
-			codigo: body.codigo,
+			codigo: query.codigo,
 		});
 
 		const detailCountRows = await getFromQuery({
@@ -215,16 +225,16 @@ export async function deletePago({ body }, res) {
 				  AND tipo_transaccion = $2
 				  AND documento = $3
 			`,
-			values: [body.serie, body.tipo_transaccion, body.documento],
+			values: [query.serie, query.tipo_transaccion, query.documento],
 		});
 
 		const totalDetalles = Number(detailCountRows?.[0]?.total || 0);
 
 		if (totalDetalles === 0) {
 			await deleteQuery(tablesName.RC_ENC, {
-				serie: body.serie,
-				tipo_transaccion: body.tipo_transaccion,
-				documento: body.documento,
+				serie: query.serie,
+				tipo_transaccion: query.tipo_transaccion,
+				documento: query.documento,
 			});
 		}
 
