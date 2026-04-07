@@ -127,9 +127,9 @@ const TipoPago = () => {
 		setOpenModal(true);
 	};
 
-	if (isLoading) <GridSkeleton />;
+	if (isLoading) return <GridSkeleton />;
 
-	if (error) <ErrorLayout error={`${error}`} />;
+	if (error) return <ErrorLayout error={`${error}`} />;
 
 	return (
 		<>
