@@ -104,10 +104,15 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 			return res.status(200).json(results);
 		}
 
-		// Lógica especial para el grid de check-in
+		// Lógica especial para grid de check-in
 		// Regla:
-		// mostrar si fecha_ingreso > fecha_cierre
-		// o si estado = 0
+		// - mostrar si fecha_ingreso > fecha_cierre
+		// - o si estado = 0
+		// Además:
+		// - evitar duplicados
+		// - mantener búsqueda y paginación
+		// - devolver fecha completa y estado
+
 		const cierreRows = await getFromQuery({
 			sql: `
 				SELECT fecha_cierre
@@ -128,9 +133,10 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 
 		if (fechaCierre) {
 			values.push(fechaCierre);
-			whereParts.push(`(fecha_ingreso > $${values.length} OR estado = 0)`);
+			whereParts.push(
+				`((NULLIF(fecha_ingreso::text, '')::timestamp > $${values.length}) OR estado = 0)`
+			);
 		} else {
-			// Si no hay cierre, mantener visibles los CI
 			whereParts.push(`(fecha_ingreso IS NOT NULL OR estado = 0)`);
 		}
 
@@ -149,6 +155,10 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 				OR COALESCE(direccion_factura, '') ILIKE ${search}
 				OR COALESCE(numero_personas::text, '') ILIKE ${search}
 				OR COALESCE(estado::text, '') ILIKE ${search}
+				OR COALESCE(habitacion::text, '') ILIKE ${search}
+				OR COALESCE(subtotal::text, '') ILIKE ${search}
+				OR COALESCE(saldo::text, '') ILIKE ${search}
+				OR COALESCE(total::text, '') ILIKE ${search}
 				OR COALESCE(fecha_ingreso::text, '') ILIKE ${search}
 				OR COALESCE(fecha_salida::text, '') ILIKE ${search}
 			)`);
@@ -156,19 +166,35 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 
 		const whereClause = `WHERE ${whereParts.join(' AND ')}`;
 
-		const dataSql = `
-			SELECT *
+		const distinctBase = `
+			SELECT DISTINCT ON (serie, tipo_transaccion, documento)
+				*,
+				fecha_ingreso::text AS fecha_ingreso_completa,
+				fecha_salida::text AS fecha_salida_completa
 			FROM ${viewsName.VIEW_TRAN}
 			${whereClause}
-			ORDER BY fecha_ingreso DESC
+			ORDER BY
+				serie,
+				tipo_transaccion,
+				documento,
+				NULLIF(fecha_ingreso::text, '')::timestamp DESC NULLS LAST
+		`;
+
+		const dataSql = `
+			SELECT *
+			FROM (
+				${distinctBase}
+			) x
+			ORDER BY NULLIF(fecha_ingreso::text, '')::timestamp DESC NULLS LAST
 			OFFSET $${values.length + 1}
 			LIMIT $${values.length + 2}
 		`;
 
 		const countSql = `
 			SELECT COUNT(*) AS total
-			FROM ${viewsName.VIEW_TRAN}
-			${whereClause}
+			FROM (
+				${distinctBase}
+			) x
 		`;
 
 		const rows = await getFromQuery({
