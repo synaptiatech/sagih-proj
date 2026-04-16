@@ -92,9 +92,99 @@ export const getTransaccion = async ({ query }, res) => {
 
 export const getAllTransaccion = async ({ query, body }, res) => {
 	try {
-		const results = await getQueryMethod({ ...body, query });
-		res.status(200).json(results);
+		const tipoTransaccion =
+			query?.tipo_transaccion ||
+			body?.tipo_transaccion ||
+			body?.query?.tipo_transaccion ||
+			null;
+
+		// Mantener comportamiento original para todo lo que NO sea check-in
+		if (tipoTransaccion !== 'CI') {
+			const results = await getQueryMethod({ ...body, query });
+			return res.status(200).json(results);
+		}
+
+		// Lógica especial solo para el grid de check-in:
+		// mostrar si fecha_ingreso > fecha_cierre O si estado = 0
+		const cierreRows = await getFromQuery({
+			sql: `
+				SELECT fecha_cierre
+				FROM cierre
+				ORDER BY fecha_cierre DESC
+				LIMIT 1
+			`,
+		});
+
+		const fechaCierre = cierreRows?.[0]?.fecha_cierre || null;
+		const q = `${body?.q || ''}`.trim();
+		const pageNumber = Number(body?.pageNumber || 1);
+		const pageSize = Number(body?.pageSize || 10);
+		const offset = (pageNumber - 1) * pageSize;
+
+		const values = [];
+		let whereParts = [`tipo_transaccion = 'CI'`];
+
+		if (fechaCierre) {
+			values.push(fechaCierre);
+			whereParts.push(`(fecha_ingreso > $${values.length} OR estado = 0)`);
+		} else {
+			// Si no existe cierre, solo aplicar la parte de estado / CI
+			whereParts.push(`(estado = 0 OR fecha_ingreso IS NOT NULL)`);
+		}
+
+		if (q !== '') {
+			values.push(`%${q}%`);
+			const search = `$${values.length}`;
+
+			whereParts.push(`(
+				COALESCE(serie::text, '') ILIKE ${search}
+				OR COALESCE(tipo_transaccion::text, '') ILIKE ${search}
+				OR COALESCE(documento::text, '') ILIKE ${search}
+				OR COALESCE(cliente::text, '') ILIKE ${search}
+				OR COALESCE(vendedor::text, '') ILIKE ${search}
+				OR COALESCE(nombre_factura, '') ILIKE ${search}
+				OR COALESCE(nit_factura, '') ILIKE ${search}
+				OR COALESCE(direccion_factura, '') ILIKE ${search}
+				OR COALESCE(numero_personas::text, '') ILIKE ${search}
+				OR COALESCE(estado::text, '') ILIKE ${search}
+				OR TO_CHAR(fecha_ingreso, 'DD/MM/YYYY HH24:MI:SS') ILIKE ${search}
+				OR TO_CHAR(fecha_salida, 'DD/MM/YYYY HH24:MI:SS') ILIKE ${search}
+			)`);
+		}
+
+		const whereClause = `WHERE ${whereParts.join(' AND ')}`;
+
+		const dataSql = `
+			SELECT *
+			FROM ${viewsName.VIEW_TRAN}
+			${whereClause}
+			ORDER BY fecha_ingreso DESC
+			OFFSET $${values.length + 1}
+			LIMIT $${values.length + 2}
+		`;
+
+		const countSql = `
+			SELECT COUNT(*) AS total
+			FROM ${viewsName.VIEW_TRAN}
+			${whereClause}
+		`;
+
+		const rows = await getFromQuery({
+			sql: dataSql,
+			values: [...values, offset, pageSize],
+		});
+
+		const countRows = await getFromQuery({
+			sql: countSql,
+			values,
+		});
+
+		res.status(200).json({
+			rows,
+			count: Number(countRows?.[0]?.total || 0),
+		});
 	} catch (error) {
+		console.error(error);
 		errorHandler(res, error);
 	}
 };
@@ -315,6 +405,32 @@ export const createTransaccion = async ({ body }, res) => {
 			tranDetalle
 		);
 		if (tranEnc.vendedor === 0) delete tranEnc.vendedor;
+
+		// Validación de cierre solo para check-in
+		if (operacion === 'CI' || tranCorrelativo?.tipo_transaccion === 'CI') {
+			const cierreRows = await getFromQuery({
+				sql: `
+					SELECT fecha_cierre
+					FROM cierre
+					ORDER BY fecha_cierre DESC
+					LIMIT 1
+				`,
+			});
+
+			const fechaCierre = cierreRows?.[0]?.fecha_cierre || null;
+
+			if (fechaCierre) {
+				const fechaIngreso = new Date(tranEnc.fecha_ingreso);
+				const cierreDate = new Date(fechaCierre);
+
+				if (fechaIngreso <= cierreDate) {
+					return res.status(400).json({
+						message:
+							'No se puede realizar el check-in porque la fecha es menor o igual a la fecha de cierre.',
+					});
+				}
+			}
+		}
 
 		console.log({ tranEnc, tranDet });
 
