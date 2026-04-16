@@ -98,14 +98,16 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 			body?.query?.tipo_transaccion ||
 			null;
 
-		// Mantener comportamiento original para todo lo que NO sea check-in
+		// Para cualquier transacción distinta de CI, mantener comportamiento original
 		if (tipoTransaccion !== 'CI') {
 			const results = await getQueryMethod({ ...body, query });
 			return res.status(200).json(results);
 		}
 
-		// Lógica especial solo para el grid de check-in:
-		// mostrar si fecha_ingreso > fecha_cierre O si estado = 0
+		// Lógica especial para el grid de check-in
+		// Regla:
+		// mostrar si fecha_ingreso > fecha_cierre
+		// o si estado = 0
 		const cierreRows = await getFromQuery({
 			sql: `
 				SELECT fecha_cierre
@@ -122,14 +124,14 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 		const offset = (pageNumber - 1) * pageSize;
 
 		const values = [];
-		let whereParts = [`tipo_transaccion = 'CI'`];
+		const whereParts = [`tipo_transaccion = 'CI'`];
 
 		if (fechaCierre) {
 			values.push(fechaCierre);
 			whereParts.push(`(fecha_ingreso > $${values.length} OR estado = 0)`);
 		} else {
-			// Si no existe cierre, solo aplicar la parte de estado / CI
-			whereParts.push(`(estado = 0 OR fecha_ingreso IS NOT NULL)`);
+			// Si no hay cierre, mantener visibles los CI
+			whereParts.push(`(fecha_ingreso IS NOT NULL OR estado = 0)`);
 		}
 
 		if (q !== '') {
@@ -147,8 +149,8 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 				OR COALESCE(direccion_factura, '') ILIKE ${search}
 				OR COALESCE(numero_personas::text, '') ILIKE ${search}
 				OR COALESCE(estado::text, '') ILIKE ${search}
-				OR TO_CHAR(fecha_ingreso, 'DD/MM/YYYY HH24:MI:SS') ILIKE ${search}
-				OR TO_CHAR(fecha_salida, 'DD/MM/YYYY HH24:MI:SS') ILIKE ${search}
+				OR COALESCE(fecha_ingreso::text, '') ILIKE ${search}
+				OR COALESCE(fecha_salida::text, '') ILIKE ${search}
 			)`);
 		}
 
@@ -406,7 +408,7 @@ export const createTransaccion = async ({ body }, res) => {
 		);
 		if (tranEnc.vendedor === 0) delete tranEnc.vendedor;
 
-		// Validación de cierre solo para check-in
+		// Validación de cierre para check-in
 		if (operacion === 'CI' || tranCorrelativo?.tipo_transaccion === 'CI') {
 			const cierreRows = await getFromQuery({
 				sql: `
