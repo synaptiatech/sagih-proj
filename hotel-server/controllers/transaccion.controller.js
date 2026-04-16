@@ -98,20 +98,11 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 			body?.query?.tipo_transaccion ||
 			null;
 
-		// Para cualquier transacción distinta de CI, mantener comportamiento original
+		// Para transacciones distintas de check-in, mantener comportamiento original
 		if (tipoTransaccion !== 'CI') {
 			const results = await getQueryMethod({ ...body, query });
 			return res.status(200).json(results);
 		}
-
-		// Lógica especial para grid de check-in
-		// Regla:
-		// - mostrar si fecha_ingreso > fecha_cierre
-		// - o si estado = 0
-		// Además:
-		// - evitar duplicados
-		// - mantener búsqueda y paginación
-		// - devolver fecha completa y estado
 
 		const cierreRows = await getFromQuery({
 			sql: `
@@ -128,18 +119,48 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 		const pageSize = Number(body?.pageSize || 10);
 		const offset = (pageNumber - 1) * pageSize;
 
+		// Expresión segura para interpretar fecha_ingreso aunque venga como texto
+		const fechaIngresoExpr = `
+			CASE
+				WHEN NULLIF(fecha_ingreso::text, '') IS NULL THEN NULL
+				WHEN fecha_ingreso::text ~ '^\\d{4}-\\d{2}-\\d{2}( \\d{2}:\\d{2}(:\\d{2})?)?$'
+					THEN fecha_ingreso::timestamp
+				WHEN fecha_ingreso::text ~ '^\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2}$'
+					THEN to_timestamp(fecha_ingreso::text, 'DD/MM/YYYY HH24:MI:SS')
+				WHEN fecha_ingreso::text ~ '^\\d{2}/\\d{2}/\\d{4}$'
+					THEN to_timestamp(fecha_ingreso::text, 'DD/MM/YYYY')
+				ELSE NULL
+			END
+		`;
+
+		const fechaSalidaExpr = `
+			CASE
+				WHEN NULLIF(fecha_salida::text, '') IS NULL THEN NULL
+				WHEN fecha_salida::text ~ '^\\d{4}-\\d{2}-\\d{2}( \\d{2}:\\d{2}(:\\d{2})?)?$'
+					THEN fecha_salida::timestamp
+				WHEN fecha_salida::text ~ '^\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2}$'
+					THEN to_timestamp(fecha_salida::text, 'DD/MM/YYYY HH24:MI:SS')
+				WHEN fecha_salida::text ~ '^\\d{2}/\\d{2}/\\d{4}$'
+					THEN to_timestamp(fecha_salida::text, 'DD/MM/YYYY')
+				ELSE NULL
+			END
+		`;
+
 		const values = [];
 		const whereParts = [`tipo_transaccion = 'CI'`];
 
+		// Regla del grid:
+		// mostrar si fecha_ingreso > fecha_cierre o estado = 0
 		if (fechaCierre) {
 			values.push(fechaCierre);
 			whereParts.push(
-				`((NULLIF(fecha_ingreso::text, '')::timestamp > $${values.length}) OR estado = 0)`
+				`((${fechaIngresoExpr}) > $${values.length} OR estado = 0)`
 			);
 		} else {
-			whereParts.push(`(fecha_ingreso IS NOT NULL OR estado = 0)`);
+			whereParts.push(`(estado = 0 OR fecha_ingreso IS NOT NULL)`);
 		}
 
+		// Búsqueda
 		if (q !== '') {
 			values.push(`%${q}%`);
 			const search = `$${values.length}`;
@@ -155,10 +176,6 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 				OR COALESCE(direccion_factura, '') ILIKE ${search}
 				OR COALESCE(numero_personas::text, '') ILIKE ${search}
 				OR COALESCE(estado::text, '') ILIKE ${search}
-				OR COALESCE(habitacion::text, '') ILIKE ${search}
-				OR COALESCE(subtotal::text, '') ILIKE ${search}
-				OR COALESCE(saldo::text, '') ILIKE ${search}
-				OR COALESCE(total::text, '') ILIKE ${search}
 				OR COALESCE(fecha_ingreso::text, '') ILIKE ${search}
 				OR COALESCE(fecha_salida::text, '') ILIKE ${search}
 			)`);
@@ -166,35 +183,33 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 
 		const whereClause = `WHERE ${whereParts.join(' AND ')}`;
 
-		const distinctBase = `
+		const baseQuery = `
 			SELECT DISTINCT ON (serie, tipo_transaccion, documento)
 				*,
 				fecha_ingreso::text AS fecha_ingreso_completa,
-				fecha_salida::text AS fecha_salida_completa
+				fecha_salida::text AS fecha_salida_completa,
+				(${fechaIngresoExpr}) AS fecha_ord,
+				(${fechaSalidaExpr}) AS fecha_salida_ord
 			FROM ${viewsName.VIEW_TRAN}
 			${whereClause}
 			ORDER BY
 				serie,
 				tipo_transaccion,
 				documento,
-				NULLIF(fecha_ingreso::text, '')::timestamp DESC NULLS LAST
+				(${fechaIngresoExpr}) DESC NULLS LAST
 		`;
 
 		const dataSql = `
 			SELECT *
-			FROM (
-				${distinctBase}
-			) x
-			ORDER BY NULLIF(fecha_ingreso::text, '')::timestamp DESC NULLS LAST
+			FROM (${baseQuery}) t
+			ORDER BY fecha_ord DESC NULLS LAST
 			OFFSET $${values.length + 1}
 			LIMIT $${values.length + 2}
 		`;
 
 		const countSql = `
 			SELECT COUNT(*) AS total
-			FROM (
-				${distinctBase}
-			) x
+			FROM (${baseQuery}) t
 		`;
 
 		const rows = await getFromQuery({
