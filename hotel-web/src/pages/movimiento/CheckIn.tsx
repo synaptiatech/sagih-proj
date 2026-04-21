@@ -12,7 +12,7 @@ import ErrorLayout from '../../components/layout/error';
 import Loader from '../../components/layout/loader';
 import GridSkeleton from '../../components/layout/waiting';
 import Paginacion from '../../components/paginacion/Paginacion';
-import MiModal from '../../components/show/MiModal';a
+import MiModal from '../../components/show/MiModal';
 import MiTabla from '../../components/show/Table';
 import { ToolbarOnlyRead } from '../../components/show/Toolbar';
 import { URI } from '../../consts/Uri';
@@ -26,7 +26,7 @@ import {
 	downloadFile,
 } from '../../services/fetching.service';
 import { downloadFileByBloodPart } from '../../utils/DownloadFile';
-import { formatDateTimeDashes } from '../../utils/Formateo';
+import { formatDateTime } from '../../utils/Formateo';
 import { handleError } from '../../utils/HandleError';
 import swal from 'sweetalert';
 
@@ -231,7 +231,7 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 					...row,
 					fecha_ingreso: isNaN(parsed.getTime())
 						? raw
-						: formatDateTimeDashes(parsed),
+						: formatDateTime(parsed),
 				};
 			});
 			dispatch({
@@ -265,24 +265,12 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 							subtotal: 'Subtotal',
 							saldo: 'Saldo',
 							total: 'Total',
-							estado: 'Estado',
 						}}
 						rows={state?.data || []}
 						sumatoria=''
 						onEdit={onEdit}
 						onDelete={onDelete}
 						onDownload={onDownloadOne}
-						cellRenderer={{
-							estado: (value) => (
-								<span
-									style={{
-										color: value == 1 ? '#e53935' : '#43a047',
-										fontWeight: 600,
-									}}>
-									{value == 1 ? 'Ocupado' : 'Desocupado'}
-								</span>
-							),
-						}}
 					/>
 					<Paginacion
 						count={state.pages}
