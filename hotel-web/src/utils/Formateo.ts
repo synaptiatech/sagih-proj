@@ -212,6 +212,23 @@ export const formatTime = (date: Date) => {
 	});
 };
 
+export const formatDateTime = (date: Date): string => {
+	const datePart = new Intl.DateTimeFormat('es-GT', {
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		timeZone: 'America/Guatemala',
+	}).format(date);
+	const timePart = new Intl.DateTimeFormat('es-GT', {
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+		hour12: false,
+		timeZone: 'America/Guatemala',
+	}).format(date);
+	return `${datePart} ${timePart}`;
+};
+
 export const calcularDias = (dia_1: Date, dia_2: Date): number => {
 	let diferencia = dia_2.getTime() - dia_1.getTime();
 	return Math.round(diferencia / (1000 * 3600 * 24));
