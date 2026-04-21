@@ -972,27 +972,14 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 
 		console.log('First row', rows[0]);
 
-		const stream = writeHead(name, res);
 		const doc = createDocument(Object.keys(columns).length);
 
-		let hasError = false;
-
-		doc.on('data', (data) => {
-			if (!hasError && stream && !stream.writableEnded) {
-				stream.write(data);
-			}
-		});
-		doc.on('end', () => {
-			if (!hasError && stream && !stream.writableEnded) {
-				stream.end();
-			}
-		});
-		doc.on('error', (err) => {
-			hasError = true;
-			console.error('PDF generation error (parametrizado):', err);
-			if (stream && !stream.writableEnded) {
-				stream.end();
-			}
+		// Registrar handlers ANTES de cualquier renderizado para no perder chunks
+		const chunks = [];
+		const pdfReady = new Promise((resolve, reject) => {
+			doc.on('data', (chunk) => chunks.push(chunk));
+			doc.on('end', resolve);
+			doc.on('error', reject);
 		});
 
 		const title = `Reporte de ${name.toLowerCase()}`;
@@ -1041,14 +1028,20 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 		setupPagesNumber(doc);
 		doc.flushPages();
 		doc.end();
+
+		await pdfReady;
+		const pdfBuffer = Buffer.concat(chunks);
+
+		const filename = `${name}_${new Date().toLocaleDateString('es-GT')}.pdf`;
+		res.setHeader('Content-Type', 'application/pdf');
+		res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+		res.setHeader('Content-Length', pdfBuffer.length);
+		res.end(pdfBuffer);
 	} catch (error) {
 		console.error('❌ Error en getReporteParametrizado:', error);
-
 		if (!res.headersSent) {
 			return errorHandler(res, error);
 		}
-
-		console.error('Headers ya enviados, no se puede enviar error');
 		if (!res.writableEnded) {
 			res.end();
 		}
