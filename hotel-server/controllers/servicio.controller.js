@@ -91,6 +91,8 @@ export const getDataForReportes = async (req, res) => {
 
 		const { rows: clientes } = await getQueryMethod({
 			table: tablesName.CLIENTE,
+			limit: 500,
+			sort: { nombre: 'ASC' },
 		});
 
 		const { rows: habitacion } = await getQueryMethod({
