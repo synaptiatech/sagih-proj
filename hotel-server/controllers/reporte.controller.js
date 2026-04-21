@@ -924,7 +924,9 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 				return {
 					...item,
 					valor: normalizeTimestamp(valor, {
-						endOfDay: String(item?.relacion || '').toLowerCase() === 'menor igual',
+						endOfDay: ['<=', 'menor igual', 'lte'].includes(
+						String(item?.relacion || '').toLowerCase().trim()
+					),
 					}),
 				};
 			}
