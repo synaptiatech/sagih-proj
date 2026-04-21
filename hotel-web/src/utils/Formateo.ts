@@ -230,19 +230,20 @@ export const formatDateTime = (date: Date): string => {
 };
 
 export const formatDateTimeDashes = (date: Date): string => {
-	const pad = (n: number) => String(n).padStart(2, '0');
-	const gt = new Intl.DateTimeFormat('es-GT', {
+	const datePart = new Intl.DateTimeFormat('es-GT', {
 		year: 'numeric',
 		month: '2-digit',
 		day: '2-digit',
+		timeZone: 'America/Guatemala',
+	}).format(date);
+	const timePart = new Intl.DateTimeFormat('es-GT', {
 		hour: '2-digit',
 		minute: '2-digit',
 		second: '2-digit',
 		hour12: false,
 		timeZone: 'America/Guatemala',
-	}).formatToParts(date);
-	const p = Object.fromEntries(gt.map(({ type, value }) => [type, value]));
-	return `${p.day}-${p.month}-${p.year} ${p.hour}:${p.minute}:${p.second}`;
+	}).format(date);
+	return `${datePart.replace(/\//g, '-')} ${timePart}`;
 };
 
 export const calcularDias = (dia_1: Date, dia_2: Date): number => {
