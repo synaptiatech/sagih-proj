@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 export interface ItemList {
 	id: number;
 	name: string;
@@ -21,7 +19,6 @@ export interface MiTablaProps {
 	onDelete?: (row: Object, index: number) => void;
 	onEdit?: (row: Object, index: number) => void;
 	onDownload?: (row: Object) => void;
-	cellRenderer?: { [key: string]: (value: any, row: any) => ReactNode };
 }
 
 export interface TableProps {
