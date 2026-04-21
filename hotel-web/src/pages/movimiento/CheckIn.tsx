@@ -26,6 +26,7 @@ import {
 	downloadFile,
 } from '../../services/fetching.service';
 import { downloadFileByBloodPart } from '../../utils/DownloadFile';
+import { formatDateTime } from '../../utils/Formateo';
 import { handleError } from '../../utils/HandleError';
 import swal from 'sweetalert';
 
@@ -222,9 +223,20 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 
 	useEffect(() => {
 		if (data) {
+			const rows = (data.rows ?? []).map((row: any) => {
+				const raw = row.fecha_ingreso;
+				if (!raw) return row;
+				const parsed = new Date(raw);
+				return {
+					...row,
+					fecha_ingreso: isNaN(parsed.getTime())
+						? raw
+						: formatDateTime(parsed),
+				};
+			});
 			dispatch({
 				type: dataType.SET_METADATA,
-				payload: data,
+				payload: { ...data, rows },
 			});
 		}
 	}, [data]);
