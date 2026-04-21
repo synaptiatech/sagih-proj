@@ -150,14 +150,25 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 		const whereParts = [`tipo_transaccion = 'CI'`];
 
 		// Regla del grid:
-		// mostrar si fecha_ingreso > fecha_cierre o estado = 0
+		// mostrar si fecha_ingreso >= fecha_cierre o estado = 0
 		if (fechaCierre) {
 			values.push(fechaCierre);
 			whereParts.push(
-				`((${fechaIngresoExpr}) > $${values.length} OR estado = 0)`
+				`((${fechaIngresoExpr}) >= $${values.length} OR estado = 0)`
 			);
 		} else {
 			whereParts.push(`(estado = 0 OR fecha_ingreso IS NOT NULL)`);
+		}
+
+		// Aplicar filtro de estado proveniente del frontend (stateTran)
+		const estadoParam =
+			query?.estado !== undefined && query.estado !== ''
+				? Number(query.estado)
+				: null;
+
+		if (estadoParam !== null && !isNaN(estadoParam)) {
+			values.push(estadoParam);
+			whereParts.push(`estado = $${values.length}`);
 		}
 
 		// Búsqueda
@@ -582,7 +593,7 @@ export const updateTransaccion = async ({ body }, res) => {
 		});
 
 		const hab_tranDet = tranDet.filter((detalle) => {
-			return (detalle.servicio = 1);
+			return detalle.servicio === 1;
 		});
 
 		await updateQuery(tablesName.TRAN_ENC, tranEnc, {
