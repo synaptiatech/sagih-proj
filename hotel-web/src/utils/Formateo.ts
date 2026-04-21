@@ -9,7 +9,7 @@ export const formatearEstadoHabitacion = (estado: string) => {
 			return 'Ocupada';
 		case 'RE':
 			return 'Reservada';
-		case 'N':
+		case 'N':a
 			return 'Mantenimiento';
 		default:
 			return 'Limpieza';
@@ -227,23 +227,6 @@ export const formatDateTime = (date: Date): string => {
 		timeZone: 'America/Guatemala',
 	}).format(date);
 	return `${datePart} ${timePart}`;
-};
-
-export const formatDateTimeDashes = (date: Date): string => {
-	const datePart = new Intl.DateTimeFormat('es-GT', {
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit',
-		timeZone: 'America/Guatemala',
-	}).format(date);
-	const timePart = new Intl.DateTimeFormat('es-GT', {
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-		hour12: false,
-		timeZone: 'America/Guatemala',
-	}).format(date);
-	return `${datePart.replace(/\//g, '-')} ${timePart}`;
 };
 
 export const calcularDias = (dia_1: Date, dia_2: Date): number => {
