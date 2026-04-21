@@ -56,15 +56,15 @@ const normalizeTimestamp = (value, { endOfDay = false } = {}) => {
 		/^(\d{4}-\d{2}-\d{2})\s(\d{1,2})\s(AM|PM):(\d{1,2})$/i
 	);
 	if (match) {
-		const [, datePart, hourRaw, ampmRaw, secondRaw] = match;
+		const [, datePart, hourRaw, ampmRaw, minuteRaw] = match;
 		let hour = Number(hourRaw);
-		const second = Number(secondRaw);
+		const minute = Number(minuteRaw);
 		const ampm = ampmRaw.toUpperCase();
 
 		if (ampm === 'AM' && hour === 12) hour = 0;
 		if (ampm === 'PM' && hour < 12) hour += 12;
 
-		return `${datePart} ${pad2(hour)}:00:${pad2(second)}`;
+		return `${datePart} ${pad2(hour)}:${pad2(minute)}:00`;
 	}
 
 	match = normalized.match(/^(\d{4}-\d{2}-\d{2})\s(\d{1,2})\s(AM|PM)$/i);
@@ -924,9 +924,7 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 				return {
 					...item,
 					valor: normalizeTimestamp(valor, {
-						endOfDay: ['<=', 'menor igual', 'lte'].includes(
-						String(item?.relacion || '').toLowerCase().trim()
-					),
+						endOfDay: String(item?.relacion || '').toLowerCase() === 'menor igual',
 					}),
 				};
 			}
@@ -977,11 +975,24 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 		const stream = writeHead(name, res);
 		const doc = createDocument(Object.keys(columns).length);
 
+		let hasError = false;
+
 		doc.on('data', (data) => {
-			stream.write(data);
+			if (!hasError && stream && !stream.writableEnded) {
+				stream.write(data);
+			}
 		});
 		doc.on('end', () => {
-			stream.end();
+			if (!hasError && stream && !stream.writableEnded) {
+				stream.end();
+			}
+		});
+		doc.on('error', (err) => {
+			hasError = true;
+			console.error('PDF generation error (parametrizado):', err);
+			if (stream && !stream.writableEnded) {
+				stream.end();
+			}
 		});
 
 		const title = `Reporte de ${name.toLowerCase()}`;
@@ -1031,7 +1042,16 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 		doc.flushPages();
 		doc.end();
 	} catch (error) {
-		return errorHandler(res, error);
+		console.error('❌ Error en getReporteParametrizado:', error);
+
+		if (!res.headersSent) {
+			return errorHandler(res, error);
+		}
+
+		console.error('Headers ya enviados, no se puede enviar error');
+		if (!res.writableEnded) {
+			res.end();
+		}
 	}
 };
 
