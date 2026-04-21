@@ -120,22 +120,7 @@ export const formatToDateTime = (
 ) => {
 	if (addBeginHour) date.setHours(8, 0);
 	if (incrementMinute) date.setMinutes(date.getMinutes() + 1);
-
-	const strDate = new Intl.DateTimeFormat('es-GT', {
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit',
-		timeZone: 'America/Guatemala',
-	}).format(date);
-	const strTime = new Intl.DateTimeFormat('es-GT', {
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-		timeZone: 'America/Guatemala',
-	}).format(date);
-
-	// const [dateFormat, timeFormat] = formatted.split(', ');
-	return `${switchDateToEng(strDate)} ${strTime}`;
+	return daysjs(date).format('YYYY-MM-DD HH:mm:ss');
 };
 
 export const formatDateToInput = ({
@@ -153,49 +138,13 @@ export const formatDateToInput = ({
 	onlyTime?: boolean;
 	onlyMonth?: boolean;
 }) => {
-	if (setDay) {
-		date.setDate(setDay);
-	}
-	const year = date.toLocaleString('es-GT', {
-		year: 'numeric',
-		timeZone: 'America/Guatemala',
-	});
-	const month = date.toLocaleString('es-GT', {
-		month: '2-digit',
-		timeZone: 'America/Guatemala',
-	});
-	const day = date.toLocaleString('es-GT', {
-		day: '2-digit',
-		timeZone: 'America/Guatemala',
-	});
+	if (setDay) date.setDate(setDay);
+	if (setHour) date.setHours(setHour, 0, 0, 0);
+	if (setMinute) date.setMinutes(setMinute, 0, 0);
 
-	if (setHour) {
-		date.setHours(setHour, 0, 0, 0);
-	}
-	const hour = date.toLocaleString('es-GT', {
-		hour: '2-digit',
-		timeZone: 'America/Guatemala',
-	});
-	if (setMinute) {
-		date.setMinutes(setMinute, 0, 0);
-	}
-	const minute = date.toLocaleString('es-GT', {
-		minute: '2-digit',
-		timeZone: 'America/Guatemala',
-	});
-
-	if (onlyTime) {
-		return `${hour.length !== 1 ? hour : `0${hour}`}:${
-			minute.length !== 1 ? minute : `0${minute}`
-		}`;
-	}
-
-	const strDate = onlyMonth
-		? `${year}-${month}`
-		: `${year}-${month}-${day} ${hour}:${
-				minute.length > 1 ? minute : `0${minute}`
-		  }`;
-	return strDate;
+	if (onlyTime) return daysjs(date).format('HH:mm');
+	if (onlyMonth) return daysjs(date).format('YYYY-MM');
+	return daysjs(date).format('YYYY-MM-DD HH:mm');
 };
 
 export const formatDate = (date: Date) => {
