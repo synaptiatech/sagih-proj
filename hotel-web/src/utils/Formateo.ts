@@ -9,7 +9,7 @@ export const formatearEstadoHabitacion = (estado: string) => {
 			return 'Ocupada';
 		case 'RE':
 			return 'Reservada';
-		case 'N':a
+		case 'N':
 			return 'Mantenimiento';
 		default:
 			return 'Limpieza';
