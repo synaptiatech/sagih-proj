@@ -98,6 +98,7 @@ const MiTabla = ({
 	onDelete = undefined,
 	onDownload = undefined,
 	onEdit = undefined,
+	cellRenderer = undefined,
 }: MiTablaProps) => {
 	const headersKey: string[] = Object.keys(headers);
 	const headersValue: Object[] = Object.values(headers);
@@ -156,12 +157,17 @@ const MiTabla = ({
 											onClick={() => {
 												if (onEdit) onEdit(row, index);
 											}}>
-											{formatearCeldas(
-												key,
-												row[
-													key as keyof typeof row
-												]?.toString() || ''
-											)}
+											{cellRenderer?.[key]
+												? cellRenderer[key](
+														row[key as keyof typeof row],
+														row
+												  )
+												: formatearCeldas(
+														key,
+														row[
+															key as keyof typeof row
+														]?.toString() || ''
+												  )}
 										</TableCell>
 									))}
 									<TableCell>
