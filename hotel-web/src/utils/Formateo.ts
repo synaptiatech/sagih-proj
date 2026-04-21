@@ -229,6 +229,22 @@ export const formatDateTime = (date: Date): string => {
 	return `${datePart} ${timePart}`;
 };
 
+export const formatDateTimeDashes = (date: Date): string => {
+	const pad = (n: number) => String(n).padStart(2, '0');
+	const gt = new Intl.DateTimeFormat('es-GT', {
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+		hour12: false,
+		timeZone: 'America/Guatemala',
+	}).formatToParts(date);
+	const p = Object.fromEntries(gt.map(({ type, value }) => [type, value]));
+	return `${p.day}-${p.month}-${p.year} ${p.hour}:${p.minute}:${p.second}`;
+};
+
 export const calcularDias = (dia_1: Date, dia_2: Date): number => {
 	let diferencia = dia_2.getTime() - dia_1.getTime();
 	return Math.round(diferencia / (1000 * 3600 * 24));
