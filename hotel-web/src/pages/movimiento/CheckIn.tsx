@@ -224,13 +224,13 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 	useEffect(() => {
 		if (data) {
 			const rows = (data.rows ?? []).map((row: any) => {
-				const raw = row.fecha_ingreso;
+				const raw = row.fecha_ingreso_ts;
 				if (!raw) return row;
 				const parsed = new Date(raw);
 				return {
 					...row,
 					fecha_ingreso: isNaN(parsed.getTime())
-						? raw
+						? row.fecha_ingreso
 						: formatDateTime(parsed),
 				};
 			});
