@@ -224,7 +224,7 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 	useEffect(() => {
 		if (data) {
 			const rows = (data.rows ?? []).map((row: any) => {
-				const raw = row.fecha_ingreso_ts;
+				const raw = row.fecha_ingreso_completa;
 				if (!raw) return row;
 				const parsed = new Date(raw);
 				return {
