@@ -197,7 +197,7 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 		const baseQuery = `
 			SELECT DISTINCT ON (serie, tipo_transaccion, documento)
 				*,
-				TO_CHAR((${fechaIngresoExpr}), 'DD/MM/YYYY HH24:MI:SS') AS fecha_ingreso_completa,
+				TO_CHAR(fecha_ingreso_ts, 'DD/MM/YYYY HH24:MI:SS') AS fecha_ingreso_completa,
 				fecha_salida::text AS fecha_salida_completa,
 				(${fechaIngresoExpr}) AS fecha_ord,
 				(${fechaSalidaExpr}) AS fecha_salida_ord
