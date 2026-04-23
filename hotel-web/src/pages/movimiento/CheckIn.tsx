@@ -327,6 +327,22 @@ tfoot tr:first-child{border-top:2px solid #000}
 
 		const doc = new jsPDF();
 
+		let logoBase64: string | null = null;
+		if (empresa?.logo) {
+			try {
+				const res = await fetch(`${BASE_URL}/archivos/${empresa.logo}`);
+				const blob = await res.blob();
+				logoBase64 = await new Promise<string | null>((resolve) => {
+					const reader = new FileReader();
+					reader.onloadend = () => resolve(reader.result as string);
+					reader.onerror = () => resolve(null);
+					reader.readAsDataURL(blob);
+				});
+			} catch { /* continuar sin logo */ }
+		}
+		const imgFormat = empresa?.logo?.split('.').pop()?.toUpperCase() === 'PNG' ? 'PNG' : 'JPEG';
+		if (logoBase64) doc.addImage(logoBase64, imgFormat, 14, 8, 20, 20);
+
 		doc.setFontSize(12);
 		doc.setFont('helvetica', 'bold');
 		if (empresa?.nombre) doc.text(empresa.nombre, 105, 12, { align: 'center' });
@@ -346,16 +362,15 @@ tfoot tr:first-child{border-top:2px solid #000}
 		doc.text(`Check-In: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`, 14, 42);
 
 		doc.setFontSize(9);
-		doc.text(`Documento: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`, 14, 52);
-		doc.text(`Habitación: ${checkin.habitacion || ''}`, 110, 52);
-		doc.text(`Cliente: ${checkin.nombre_factura || ''}`, 14, 58);
-		doc.text(`Fecha ingreso: ${checkin.fecha_ingreso}`, 110, 58);
-		doc.text(`Fecha salida: ${checkin.fecha_salida}`, 14, 64);
-		doc.text(`Total: ${checkin.total}`, 110, 64);
-		doc.text(`Saldo: ${checkin.saldo}`, 14, 70);
+		doc.text(`Habitación: ${checkin.habitacion || ''}`, 14, 52);
+		doc.text(`Cliente: ${checkin.nombre_factura || ''}`, 110, 52);
+		doc.text(`Fecha ingreso: ${checkin.fecha_ingreso}`, 14, 58);
+		doc.text(`Fecha salida: ${checkin.fecha_salida}`, 110, 58);
+		doc.text(`Total: ${checkin.total}`, 14, 64);
+		doc.text(`Saldo: ${checkin.saldo}`, 110, 64);
 
 		autoTable(doc, {
-			startY: 76,
+			startY: 70,
 			head: [['N° Recibo', 'Fecha/Hora', 'Tipo pago', 'Descripción', 'Monto']],
 			body: pagos.length > 0
 				? pagos.map(p => [p.n_recibo, p.fecha, p.tipo_pago, p.descripcion, fmtQ(Number(p.monto))])
@@ -364,8 +379,26 @@ tfoot tr:first-child{border-top:2px solid #000}
 				['', '', '', 'TOTAL PAGADO:', fmtQ(totalPagado)],
 				['', '', '', 'SALDO PENDIENTE:', fmtQ(saldoPendiente)],
 			],
+			theme: 'grid',
+			headStyles: {
+				fillColor: [242, 242, 242],
+				textColor: [0, 0, 0],
+				fontStyle: 'bold',
+				lineColor: [0, 0, 0],
+				lineWidth: 0.3,
+			},
+			bodyStyles: {
+				lineColor: [200, 200, 200],
+				lineWidth: 0.1,
+			},
+			footStyles: {
+				fontStyle: 'bold',
+				fillColor: [255, 255, 255],
+				textColor: [0, 0, 0],
+				lineWidth: 0.3,
+				lineColor: [0, 0, 0],
+			},
 			columnStyles: { 4: { halign: 'right' } },
-			footStyles: { fontStyle: 'bold' },
 		});
 
 		doc.save(`Pagos-CI-${checkin.serie}-${checkin.documento}.pdf`);
