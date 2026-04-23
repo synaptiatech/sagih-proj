@@ -361,16 +361,26 @@ tfoot tr:first-child{border-top:2px solid #000}
 		doc.setFontSize(10);
 		doc.text(`Check-In: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`, 14, 42);
 
-		doc.setFontSize(9);
-		doc.text(`Habitación: ${checkin.habitacion || ''}`, 14, 52);
-		doc.text(`Cliente: ${checkin.nombre_factura || ''}`, 110, 52);
-		doc.text(`Fecha ingreso: ${checkin.fecha_ingreso}`, 14, 58);
-		doc.text(`Fecha salida: ${checkin.fecha_salida}`, 110, 58);
-		doc.text(`Total: ${checkin.total}`, 14, 64);
-		doc.text(`Saldo: ${checkin.saldo}`, 110, 64);
+		autoTable(doc, {
+			startY: 48,
+			body: [
+				['Habitación:', checkin.habitacion || '', 'Cliente:', checkin.nombre_factura || ''],
+				['Fecha ingreso:', checkin.fecha_ingreso, 'Fecha salida:', checkin.fecha_salida],
+				['Total:', checkin.total, 'Saldo:', checkin.saldo],
+			],
+			theme: 'plain',
+			styles: { fontSize: 9, cellPadding: 1.5 },
+			columnStyles: {
+				0: { fontStyle: 'bold', cellWidth: 28 },
+				2: { fontStyle: 'bold', cellWidth: 28 },
+			},
+			margin: { left: 14, right: 14 },
+		});
+
+		const datosY = (doc as any).lastAutoTable.finalY + 4;
 
 		autoTable(doc, {
-			startY: 70,
+			startY: datosY,
 			head: [['N° Recibo', 'Fecha/Hora', 'Tipo pago', 'Descripción', 'Monto']],
 			body: pagos.length > 0
 				? pagos.map(p => [p.n_recibo, p.fecha, p.tipo_pago, p.descripcion, fmtQ(Number(p.monto))])
@@ -381,10 +391,10 @@ tfoot tr:first-child{border-top:2px solid #000}
 			],
 			theme: 'grid',
 			headStyles: {
-				fillColor: [242, 242, 242],
-				textColor: [0, 0, 0],
+				fillColor: [41, 128, 185],
+				textColor: [255, 255, 255],
 				fontStyle: 'bold',
-				lineColor: [0, 0, 0],
+				lineColor: [41, 128, 185],
 				lineWidth: 0.3,
 			},
 			bodyStyles: {

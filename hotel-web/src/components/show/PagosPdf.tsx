@@ -45,77 +45,72 @@ const PagosPdf = ({ checkin, pagos }: PagosPdfProps) => {
 				/>
 			</SeccionPdf>
 			<SeccionPdf>
-				<div className='grid grid-cols-2 gap-2 py-2'>
-					<p>
-						Documento:{' '}
-						<strong>{`${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`}</strong>
-					</p>
-					<p>
-						Habitación: <strong>{checkin.habitacion || ''}</strong>
-					</p>
-					<p>
-						Cliente: <strong>{checkin.nombre_factura || ''}</strong>
-					</p>
-					<p>
-						Fecha ingreso: <strong>{checkin.fecha_ingreso}</strong>
-					</p>
-					<p>
-						Fecha salida: <strong>{checkin.fecha_salida}</strong>
-					</p>
-					<p>
-						Total: <strong>{checkin.total}</strong>
-					</p>
-					<p>
-						Saldo: <strong>{checkin.saldo}</strong>
-					</p>
-				</div>
+				<table className='table-auto w-full text-sm border border-collapse border-gray-300'>
+					<tbody>
+						<tr>
+							<td className='border border-gray-300 px-2 py-1 font-bold bg-gray-50 w-1/4'>Documento</td>
+							<td className='border border-gray-300 px-2 py-1 w-1/4'>{`${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`}</td>
+							<td className='border border-gray-300 px-2 py-1 font-bold bg-gray-50 w-1/4'>Habitación</td>
+							<td className='border border-gray-300 px-2 py-1 w-1/4'>{checkin.habitacion || ''}</td>
+						</tr>
+						<tr>
+							<td className='border border-gray-300 px-2 py-1 font-bold bg-gray-50'>Cliente</td>
+							<td className='border border-gray-300 px-2 py-1'>{checkin.nombre_factura || ''}</td>
+							<td className='border border-gray-300 px-2 py-1 font-bold bg-gray-50'>Fecha ingreso</td>
+							<td className='border border-gray-300 px-2 py-1'>{checkin.fecha_ingreso}</td>
+						</tr>
+						<tr>
+							<td className='border border-gray-300 px-2 py-1 font-bold bg-gray-50'>Fecha salida</td>
+							<td className='border border-gray-300 px-2 py-1'>{checkin.fecha_salida}</td>
+							<td className='border border-gray-300 px-2 py-1 font-bold bg-gray-50'>Total</td>
+							<td className='border border-gray-300 px-2 py-1'>{checkin.total}</td>
+						</tr>
+						<tr>
+							<td className='border border-gray-300 px-2 py-1 font-bold bg-gray-50'>Saldo</td>
+							<td className='border border-gray-300 px-2 py-1'>{checkin.saldo}</td>
+							<td className='border border-gray-300 px-2 py-1 bg-gray-50' colSpan={2}></td>
+						</tr>
+					</tbody>
+				</table>
 			</SeccionPdf>
 			<SeccionPdf>
-				<table className='table-auto w-full'>
+				<table className='table-auto w-full border border-collapse border-gray-300'>
 					<thead>
-						<tr className='border-y-4 border-black'>
-							<th align='left'>N° Recibo</th>
-							<th align='left'>Fecha/Hora</th>
-							<th align='left'>Tipo pago</th>
-							<th align='left'>Descripción</th>
-							<th align='right'>Monto</th>
+						<tr>
+							<th className='bg-blue-700 text-white font-bold text-left px-2 py-1.5'>N° Recibo</th>
+							<th className='bg-blue-700 text-white font-bold text-left px-2 py-1.5'>Fecha/Hora</th>
+							<th className='bg-blue-700 text-white font-bold text-left px-2 py-1.5'>Tipo pago</th>
+							<th className='bg-blue-700 text-white font-bold text-left px-2 py-1.5'>Descripción</th>
+							<th className='bg-blue-700 text-white font-bold text-right px-2 py-1.5'>Monto</th>
 						</tr>
 					</thead>
 					<tbody>
 						{pagos.length === 0 ? (
 							<tr>
-								<td colSpan={5} align='center'>
+								<td colSpan={5} className='px-2 py-1.5 text-center border-b border-gray-200'>
 									Sin pagos registrados
 								</td>
 							</tr>
 						) : (
 							pagos.map((p, i) => (
-								<tr key={i}>
-									<td align='left'>{p.n_recibo}</td>
-									<td align='left'>{p.fecha}</td>
-									<td align='left'>{p.tipo_pago}</td>
-									<td align='left'>{p.descripcion}</td>
-									<td align='right'>{formatQ(Number(p.monto))}</td>
+								<tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+									<td className='px-2 py-1.5 border-b border-gray-200'>{p.n_recibo}</td>
+									<td className='px-2 py-1.5 border-b border-gray-200'>{p.fecha}</td>
+									<td className='px-2 py-1.5 border-b border-gray-200'>{p.tipo_pago}</td>
+									<td className='px-2 py-1.5 border-b border-gray-200'>{p.descripcion}</td>
+									<td className='px-2 py-1.5 border-b border-gray-200 text-right'>{formatQ(Number(p.monto))}</td>
 								</tr>
 							))
 						)}
 					</tbody>
 					<tfoot>
-						<tr className='border-t-2 border-black'>
-							<td colSpan={4} align='right'>
-								<b>TOTAL PAGADO:</b>
-							</td>
-							<td align='right'>
-								<b>{formatQ(totalPagado)}</b>
-							</td>
+						<tr className='border-t-2 border-gray-400'>
+							<td colSpan={4} className='px-2 py-1.5 text-right font-bold'>TOTAL PAGADO:</td>
+							<td className='px-2 py-1.5 text-right font-bold'>{formatQ(totalPagado)}</td>
 						</tr>
 						<tr>
-							<td colSpan={4} align='right'>
-								<b>SALDO PENDIENTE:</b>
-							</td>
-							<td align='right'>
-								<b>{formatQ(saldoPendiente)}</b>
-							</td>
+							<td colSpan={4} className='px-2 py-1.5 text-right font-bold'>SALDO PENDIENTE:</td>
+							<td className='px-2 py-1.5 text-right font-bold'>{formatQ(saldoPendiente)}</td>
 						</tr>
 					</tfoot>
 				</table>
