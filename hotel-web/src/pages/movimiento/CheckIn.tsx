@@ -1,3 +1,4 @@
+import { AuthContext } from '../../contexts/AuthProvider';
 import { Box, Button } from '@mui/material';
 import {
 	ChangeEvent,
@@ -16,7 +17,7 @@ import MiModal from '../../components/show/MiModal';
 import PagosPdf from '../../components/show/PagosPdf';
 import MiTabla from '../../components/show/Table';
 import { ToolbarOnlyRead } from '../../components/show/Toolbar';
-import { URI } from '../../consts/Uri';
+import { BASE_URL, URI } from '../../consts/Uri';
 import { TransactContext } from '../../contexts/TransactProvider';
 import { dataDefault, dataReducer, dataType } from '../../hooks/dataReducer';
 import { transactTypes } from '../../hooks/transactReducer';
@@ -40,11 +41,14 @@ export type CheckInType = {
 
 const CheckIn = ({ stateTran }: CheckInType) => {
 	const { dispatch: tranDispatch } = useContext(TransactContext);
+	const { state: authState } = useContext(AuthContext);
 	const [state, dispatch] = useReducer(dataReducer, dataDefault);
 	const [openModal, setOpenModal] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [pagosData, setPagosData] = useState<{ checkin: any; pagos: any[] } | null>(null);
 	const [openPagosModal, setOpenPagosModal] = useState(false);
+
+	const { data: empresaData } = useFetch({ path: `${URI.empresa}/get`, table: 'empresa' });
 
 	const { data, error, isLoading, refetch } = useFetch({
 		path: `${URI.transaccion}/all`,
@@ -268,8 +272,22 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 table{width:100%;border-collapse:collapse;margin-top:10px}
 th,td{padding:6px 8px}thead tr{border-top:3px solid #000;border-bottom:3px solid #000}
 tfoot tr:first-child{border-top:2px solid #000}
-.g{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}p{margin:2px 0}</style>
+.g{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}p{margin:2px 0}
+.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px}</style>
 </head><body>
+<div class="hdr">
+  <img src="${BASE_URL}/archivos/${empresaData?.logo || ''}" style="height:64px" onerror="this.style.display='none'"/>
+  <div style="text-align:center">
+    <strong style="font-size:14px">${empresaData?.nombre || ''}</strong><br/>
+    ${empresaData?.direccion || ''}<br/>
+    NIT: ${empresaData?.nit || ''}
+  </div>
+  <div style="text-align:right;font-size:11px">
+    ${new Date().toLocaleDateString('es-GT')}<br/>
+    ${new Date().toLocaleTimeString('es-GT')}<br/>
+    ${authState?.data?.usuario || ''}
+  </div>
+</div>
 <h2>Estado de cuenta - Pagos realizados</h2>
 <h3>Check-In: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}</h3>
 <div class="g">
@@ -308,22 +326,35 @@ tfoot tr:first-child{border-top:2px solid #000}
 
 		const doc = new jsPDF();
 
+		doc.setFontSize(12);
+		doc.setFont('helvetica', 'bold');
+		doc.text(empresaData?.nombre || '', 105, 12, { align: 'center' });
+		doc.setFont('helvetica', 'normal');
+		doc.setFontSize(9);
+		doc.text(empresaData?.direccion || '', 105, 18, { align: 'center' });
+		doc.text(`NIT: ${empresaData?.nit || ''}`, 105, 24, { align: 'center' });
+		doc.text(new Date().toLocaleDateString('es-GT'), 195, 12, { align: 'right' });
+		doc.text(new Date().toLocaleTimeString('es-GT'), 195, 18, { align: 'right' });
+		doc.text(authState?.data?.usuario || '', 195, 24, { align: 'right' });
+
 		doc.setFontSize(14);
-		doc.text('Estado de cuenta - Pagos realizados', 14, 18);
+		doc.setFont('helvetica', 'bold');
+		doc.text('Estado de cuenta - Pagos realizados', 14, 34);
+		doc.setFont('helvetica', 'normal');
 		doc.setFontSize(10);
-		doc.text(`Check-In: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`, 14, 26);
+		doc.text(`Check-In: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`, 14, 42);
 
 		doc.setFontSize(9);
-		doc.text(`Documento: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`, 14, 36);
-		doc.text(`Habitación: ${checkin.habitacion || ''}`, 110, 36);
-		doc.text(`Cliente: ${checkin.nombre_factura || ''}`, 14, 42);
-		doc.text(`Fecha ingreso: ${checkin.fecha_ingreso}`, 110, 42);
-		doc.text(`Fecha salida: ${checkin.fecha_salida}`, 14, 48);
-		doc.text(`Total: ${checkin.total}`, 110, 48);
-		doc.text(`Saldo: ${checkin.saldo}`, 14, 54);
+		doc.text(`Documento: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`, 14, 52);
+		doc.text(`Habitación: ${checkin.habitacion || ''}`, 110, 52);
+		doc.text(`Cliente: ${checkin.nombre_factura || ''}`, 14, 58);
+		doc.text(`Fecha ingreso: ${checkin.fecha_ingreso}`, 110, 58);
+		doc.text(`Fecha salida: ${checkin.fecha_salida}`, 14, 64);
+		doc.text(`Total: ${checkin.total}`, 110, 64);
+		doc.text(`Saldo: ${checkin.saldo}`, 14, 70);
 
 		autoTable(doc, {
-			startY: 60,
+			startY: 76,
 			head: [['N° Recibo', 'Fecha/Hora', 'Tipo pago', 'Descripción', 'Monto']],
 			body: pagos.length > 0
 				? pagos.map(p => [p.n_recibo, p.fecha, p.tipo_pago, p.descripcion, fmtQ(Number(p.monto))])

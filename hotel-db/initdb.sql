@@ -1145,7 +1145,9 @@ create view v_tran_detalle as
 		concat(dt.tipo_transaccion, '-', dt.serie, '-', dt.documento) as codigo,
 		to_char(dt.fecha, 'DD/MM/YYYY HH24:MI:SS') as fecha,
 		dt.descripcion , dt.habitacion , dt.servicio ,
-		s.nombre as n_servicio ,
+		case when s.nombre = 'Habitación' then dt.descripcion
+		     else s.nombre
+		end as n_servicio ,
 		dt.cantidad ,
 		'Q.' || to_char(dt.precio, '999G999D99') as precio ,
 		'Q.' || to_char(dt.subtotal, '999G999D99') as dt_subtotal ,

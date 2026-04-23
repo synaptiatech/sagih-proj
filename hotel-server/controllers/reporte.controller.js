@@ -258,8 +258,8 @@ export const masterDetail = async ({ query, body, user }, res) => {
 					color: '#fff',
 				},
 				width: 'fill_body',
-				headBackground: '#f2f2f2',
-				headColor: '#f2f2f2',
+				headBackground: '#ffffff',
+				headColor: '#ffffff',
 				headHeight: 0.5,
 				cellsFont: 'Helvetica-Bold',
 			});
@@ -604,8 +604,8 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 				fontSize: 12,
 				border: { size: 0, color: '#fff' },
 				width: 'fill_body',
-				headBackground: '#f2f2f2',
-				headColor: '#f2f2f2',
+				headBackground: '#ffffff',
+				headColor: '#ffffff',
 				headHeight: 0.5,
 				cellsFont: 'Helvetica-Bold',
 			});
@@ -675,8 +675,8 @@ export const cierreTurno = async ({ query, body, user }, res) => {
 			fontSize: 12,
 			border: { size: 0, color: '#fff' },
 			width: 'fill_body',
-			headBackground: '#f2f2f2',
-			headColor: '#f2f2f2',
+			headBackground: '#ffffff',
+			headColor: '#ffffff',
 			headHeight: 0.5,
 			cellsFont: 'Helvetica-Bold',
 		});
@@ -827,8 +827,8 @@ export const getReporte = async ({ body, user }, res) => {
 						color: '#fff',
 					},
 					width: 'fill_body',
-					headBackground: '#f2f2f2',
-					headColor: '#f2f2f2',
+					headBackground: '#ffffff',
+					headColor: '#ffffff',
 					headHeight: 0.5,
 					cellsFont: 'Helvetica-Bold',
 				});
