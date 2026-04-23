@@ -154,7 +154,7 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 		if (fechaCierre) {
 			values.push(fechaCierre);
 			whereParts.push(
-				`((${fechaIngresoExpr}) >= $${values.length} OR estado = 0)`
+				`(fecha_ingreso_ts >= $${values.length} OR estado = 0)`
 			);
 		} else {
 			whereParts.push(`(estado = 0 OR fecha_ingreso IS NOT NULL)`);
@@ -197,7 +197,7 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 		const baseQuery = `
 			SELECT DISTINCT ON (serie, tipo_transaccion, documento)
 				*,
-				TO_CHAR(fecha_ingreso_ts, 'DD/MM/YYYY HH24:MI:SS') AS fecha_ingreso_completa,
+				TO_CHAR(fecha_ingreso_ts, 'YYYY-MM-DD HH24:MI:SS') AS fecha_ingreso_completa,
 				fecha_salida::text AS fecha_salida_completa,
 				(${fechaIngresoExpr}) AS fecha_ord,
 				(${fechaSalidaExpr}) AS fecha_salida_ord
