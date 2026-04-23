@@ -319,6 +319,7 @@ tfoot tr:first-child{border-top:2px solid #000}
 		if (!pagosData) return;
 		const { data: empresa } = await dataGet({ path: URI.empresa });
 		const { checkin, pagos } = pagosData;
+		console.log('[DEBUG checkin]', checkin);
 		const fmtQ = (n: number) =>
 			new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(n);
 		const totalPagado = pagos.reduce((acc, p) => acc + Number(p.monto), 0);
@@ -350,9 +351,9 @@ tfoot tr:first-child{border-top:2px solid #000}
 		doc.setFontSize(9);
 		if (empresa?.direccion) doc.text(empresa.direccion, 105, 18, { align: 'center' });
 		if (empresa?.nit) doc.text(`NIT: ${empresa.nit}`, 105, 24, { align: 'center' });
-		doc.text(new Date().toLocaleDateString('es-GT'), 195, 12, { align: 'right' });
+		doc.text(new Date().toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' }), 195, 12, { align: 'right' });
 		doc.text(new Date().toLocaleTimeString('es-GT'), 195, 18, { align: 'right' });
-		doc.text(authState.data.usuario ?? '', 195, 24, { align: 'right' });
+		doc.text(authState?.data?.usuario ?? '', 195, 24, { align: 'right' });
 
 		doc.setFontSize(14);
 		doc.setFont('helvetica', 'bold');
@@ -364,7 +365,7 @@ tfoot tr:first-child{border-top:2px solid #000}
 		autoTable(doc, {
 			startY: 48,
 			body: [
-				['Habitación:', checkin.habitacion || '', 'Cliente:', checkin.nombre_factura || ''],
+				['Habitación:', checkin.habitacion || checkin.n_habitacion || '', 'Cliente:', checkin.nombre_factura || ''],
 				['Fecha ingreso:', checkin.fecha_ingreso, 'Fecha salida:', checkin.fecha_salida],
 				['Total:', checkin.total, 'Saldo:', checkin.saldo],
 			],
@@ -389,26 +390,29 @@ tfoot tr:first-child{border-top:2px solid #000}
 				['', '', '', 'TOTAL PAGADO:', fmtQ(totalPagado)],
 				['', '', '', 'SALDO PENDIENTE:', fmtQ(saldoPendiente)],
 			],
-			theme: 'grid',
+			theme: 'striped',
+			styles: { lineWidth: 0 },
 			headStyles: {
 				fillColor: [41, 128, 185],
 				textColor: [255, 255, 255],
 				fontStyle: 'bold',
-				lineColor: [41, 128, 185],
-				lineWidth: 0.3,
+				lineWidth: 0,
 			},
 			bodyStyles: {
-				lineColor: [200, 200, 200],
-				lineWidth: 0.1,
+				lineWidth: 0,
 			},
 			footStyles: {
 				fontStyle: 'bold',
 				fillColor: [255, 255, 255],
 				textColor: [0, 0, 0],
-				lineWidth: 0.3,
-				lineColor: [0, 0, 0],
+				lineWidth: 0,
 			},
 			columnStyles: { 4: { halign: 'right' } },
+			didParseCell: (data: any) => {
+				if (data.section === 'foot' && !data.cell.raw) {
+					data.cell.styles.lineWidth = 0;
+				}
+			},
 		});
 
 		doc.save(`Pagos-CI-${checkin.serie}-${checkin.documento}.pdf`);
