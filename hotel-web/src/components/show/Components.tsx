@@ -51,7 +51,7 @@ const TituloPdf = ({
 				}}>
 				<Box>
 					{data.logo && <img
-						src={BASE_URL + data.logo}
+						src={`${BASE_URL}/archivos/${data.logo}`}
 						alt='Logo'
 						width={128}
 						height={128}
