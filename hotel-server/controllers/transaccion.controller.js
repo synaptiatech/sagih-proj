@@ -149,26 +149,14 @@ export const getAllTransaccion = async ({ query, body }, res) => {
 		const values = [];
 		const whereParts = [`tipo_transaccion = 'CI'`];
 
-		// Regla del grid:
-		// mostrar si fecha_ingreso >= fecha_cierre o estado = 0
+		// Regla del grid: mostrar si estado = 1 (activo) O fecha_ingreso >= fecha_cierre
 		if (fechaCierre) {
 			values.push(fechaCierre);
 			whereParts.push(
-				`(fecha_ingreso_ts >= $${values.length} OR estado = 0)`
+				`(estado = 1 OR fecha_ingreso_ts >= $${values.length})`
 			);
 		} else {
-			whereParts.push(`(estado = 0 OR fecha_ingreso IS NOT NULL)`);
-		}
-
-		// Aplicar filtro de estado proveniente del frontend (stateTran)
-		const estadoParam =
-			query?.estado !== undefined && query.estado !== ''
-				? Number(query.estado)
-				: null;
-
-		if (estadoParam !== null && !isNaN(estadoParam)) {
-			values.push(estadoParam);
-			whereParts.push(`estado = $${values.length}`);
+			whereParts.push(`(estado = 1 OR fecha_ingreso IS NOT NULL)`);
 		}
 
 		// Búsqueda
