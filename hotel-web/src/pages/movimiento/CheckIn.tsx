@@ -365,7 +365,7 @@ tfoot tr:first-child{border-top:2px solid #000}
 		autoTable(doc, {
 			startY: 48,
 			body: [
-				['Habitación:', '', 'Cliente:', checkin.nombre_factura || ''],
+				['Habitación:', checkin.habitacion || '', 'Cliente:', checkin.nombre_factura || ''],
 				['Fecha ingreso:', checkin.fecha_ingreso, 'Fecha salida:', checkin.fecha_salida],
 				['Total:', checkin.total, 'Saldo:', checkin.saldo],
 			],

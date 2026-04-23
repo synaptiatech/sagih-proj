@@ -1054,15 +1054,22 @@ select et.serie,
   et.direccion_factura,
   et.iva,
   et.inguat,
-  et.tipo_cambio, 
-  et.vendedor , 
+  et.tipo_cambio,
+  et.vendedor,
   v.nombre as v_nombre,
-  et.cliente , 
+  et.cliente,
   c.nombre as c_nombre,
-  c.telefono_celular as c_telefono
+  c.telefono_celular as c_telefono,
+  (select h.nombre
+   from detalle_transaccion dt
+     inner join habitacion h on dt.habitacion = h.codigo
+   where dt.serie = et.serie
+     and dt.tipo_transaccion = et.tipo_transaccion
+     and dt.documento = et.documento
+   limit 1) as habitacion
 from encabezado_transaccion et
   inner join vendedor v on et.vendedor = v.codigo
-  inner join cliente c on et.cliente = c .codigo;
+  inner join cliente c on et.cliente = c.codigo;
 -- -----------------------------------------------------
 -- Vista reporte servicio
 -- -----------------------------------------------------
