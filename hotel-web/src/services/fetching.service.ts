@@ -133,19 +133,14 @@ export const downloadFile = async ({
 	} catch (error: any) {
 		console.error('DOWNLOAD ERROR:', error);
 
-		// ⚠️ Manejo clave: cuando backend devuelve JSON en lugar de PDF
+		let message = 'Error al generar o descargar el archivo';
 		try {
 			const text = new TextDecoder().decode(error.response.data);
 			const json = JSON.parse(text);
-
-			const message =
-				json?.error?.message ||
-				json?.message ||
-				'No se pudo generar el reporte';
-
-			throw new Error(message);
+			message = json?.error?.message || json?.message || message;
 		} catch {
-			throw new Error('Error al generar o descargar el archivo');
+			// JSON parse falló, se usa el mensaje genérico
 		}
+		throw new Error(message);
 	}
 };
