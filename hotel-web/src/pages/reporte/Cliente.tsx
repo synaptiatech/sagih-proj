@@ -46,13 +46,11 @@ const Cliente = () => {
 				table: 'v_cliente',
 				columns: state.colsReporte,
 				customWhere: state.queryFiltro
-					.map((q: any) => {
-						return {
-							columna: q.columna,
-							relacion: q.relacion,
-							valor: q.valor,
-						};
-					})
+					.map((q: any) => ({
+						columna: q.columna,
+						relacion: q.relacion === 'contiene' ? '~~*' : q.relacion,
+						valor: q.valor,
+					}))
 					.filter((q: any) => q.valor !== ''),
 				sumatoria: { str_saldo: 'Saldo' },
 			});
@@ -71,6 +69,13 @@ const Cliente = () => {
 			dispatch({
 				type: reporteReducerTypes.SET_QUERY_FILTRO,
 				payload: [
+					{
+						nombre: 'Buscar por nombre',
+						relacion: 'contiene',
+						columna: 'nombre',
+						valores: [],
+						valor: '',
+					},
 					{
 						nombre: 'Codigo',
 						relacion: '=',
