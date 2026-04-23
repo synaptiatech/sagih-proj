@@ -30,6 +30,8 @@ import { downloadFileByBloodPart } from '../../utils/DownloadFile';
 import { formatDateTime } from '../../utils/Formateo';
 import { handleError } from '../../utils/HandleError';
 import { PictureAsPdf, Print } from '@mui/icons-material';
+import autoTable from 'jspdf-autotable';
+import jsPDF from 'jspdf';
 import swal from 'sweetalert';
 
 export type CheckInType = {
@@ -295,6 +297,48 @@ tfoot tr:first-child{border-top:2px solid #000}
 		w.document.close();
 	};
 
+	const handleDownloadPdf = () => {
+		if (!pagosData) return;
+		const { checkin, pagos } = pagosData;
+		const fmtQ = (n: number) =>
+			new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(n);
+		const totalPagado = pagos.reduce((acc, p) => acc + Number(p.monto), 0);
+		const totalCI = Number(`${checkin.total}`.replace('Q.', '').replace(/,/g, '').trim());
+		const saldoPendiente = totalCI - totalPagado;
+
+		const doc = new jsPDF();
+
+		doc.setFontSize(14);
+		doc.text('Estado de cuenta - Pagos realizados', 14, 18);
+		doc.setFontSize(10);
+		doc.text(`Check-In: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`, 14, 26);
+
+		doc.setFontSize(9);
+		doc.text(`Documento: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`, 14, 36);
+		doc.text(`Habitación: ${checkin.habitacion || ''}`, 110, 36);
+		doc.text(`Cliente: ${checkin.nombre_factura || ''}`, 14, 42);
+		doc.text(`Fecha ingreso: ${checkin.fecha_ingreso}`, 110, 42);
+		doc.text(`Fecha salida: ${checkin.fecha_salida}`, 14, 48);
+		doc.text(`Total: ${checkin.total}`, 110, 48);
+		doc.text(`Saldo: ${checkin.saldo}`, 14, 54);
+
+		autoTable(doc, {
+			startY: 60,
+			head: [['N° Recibo', 'Fecha/Hora', 'Tipo pago', 'Descripción', 'Monto']],
+			body: pagos.length > 0
+				? pagos.map(p => [p.n_recibo, p.fecha, p.tipo_pago, p.descripcion, fmtQ(Number(p.monto))])
+				: [['', '', '', 'Sin pagos registrados', '']],
+			foot: [
+				['', '', '', 'TOTAL PAGADO:', fmtQ(totalPagado)],
+				['', '', '', 'SALDO PENDIENTE:', fmtQ(saldoPendiente)],
+			],
+			columnStyles: { 4: { halign: 'right' } },
+			footStyles: { fontStyle: 'bold' },
+		});
+
+		doc.save(`Pagos-CI-${checkin.serie}-${checkin.documento}.pdf`);
+	};
+
 	useEffect(() => {
 		if (data) {
 			const rows = (data.rows ?? []).map((row: any) => {
@@ -359,19 +403,19 @@ tfoot tr:first-child{border-top:2px solid #000}
 				<FormReserva onClose={onClose} />
 			</MiModal>
 			<MiModal size='large' open={openPagosModal} onClose={() => setOpenPagosModal(false)}>
-				{pagosData && (
+				{pagosData ? (
 					<>
 						<Box sx={{ display: 'flex', gap: 2, mb: 2, justifyContent: 'flex-end' }}>
 							<Button variant='outlined' startIcon={<Print />} onClick={handlePrintPagos}>
 								Imprimir
 							</Button>
-							<Button variant='contained' startIcon={<PictureAsPdf />} onClick={handlePrintPagos}>
+							<Button variant='contained' startIcon={<PictureAsPdf />} onClick={handleDownloadPdf}>
 								Descargar PDF
 							</Button>
 						</Box>
 						<PagosPdf checkin={pagosData.checkin} pagos={pagosData.pagos} />
 					</>
-				)}
+				) : <></>}
 			</MiModal>
 		</>
 	);
