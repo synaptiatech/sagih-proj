@@ -48,7 +48,7 @@ const Cliente = () => {
 				customWhere: state.queryFiltro
 					.map((q: any) => ({
 						columna: q.columna,
-						relacion: q.relacion === 'contiene' ? '~~*' : q.relacion,
+						relacion: q.relacion === '' && q.columna === 'nombre' ? '~~*' : q.relacion,
 						valor: q.valor,
 					}))
 					.filter((q: any) => q.valor !== ''),
@@ -71,7 +71,7 @@ const Cliente = () => {
 				payload: [
 					{
 						nombre: 'Buscar por nombre',
-						relacion: 'contiene',
+						relacion: '',
 						columna: 'nombre',
 						valores: [],
 						valor: '',
