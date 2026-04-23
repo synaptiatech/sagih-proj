@@ -152,15 +152,17 @@ const formatRowsForPdf = (rows, columns) => {
 		);
 	});
 
-	if (dateLikeKeys.length === 0) return rows;
-
 	return rows.map((row) => {
 		const formatted = { ...row };
 
+		columnKeys.forEach((key) => {
+			if (formatted[key] === null || formatted[key] === undefined)
+				formatted[key] = '';
+		});
+
 		dateLikeKeys.forEach((key) => {
-			if (formatted[key] !== null && formatted[key] !== undefined && formatted[key] !== '') {
+			if (formatted[key] !== '')
 				formatted[key] = formatDateValueForPdf(formatted[key]);
-			}
 		});
 
 		return formatted;
