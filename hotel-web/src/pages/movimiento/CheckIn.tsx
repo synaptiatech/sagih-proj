@@ -353,7 +353,7 @@ tfoot tr:first-child{border-top:2px solid #000}
 		if (empresa?.nit) doc.text(`NIT: ${empresa.nit}`, 105, 24, { align: 'center' });
 		doc.text(new Date().toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' }), 195, 12, { align: 'right' });
 		doc.text(new Date().toLocaleTimeString('es-GT'), 195, 18, { align: 'right' });
-		doc.text(authState?.data?.usuario ?? '', 195, 24, { align: 'right' });
+		doc.text(checkin.v_nombre ?? authState?.data?.usuario ?? '', 195, 24, { align: 'right' });
 
 		doc.setFontSize(14);
 		doc.setFont('helvetica', 'bold');
@@ -365,7 +365,7 @@ tfoot tr:first-child{border-top:2px solid #000}
 		autoTable(doc, {
 			startY: 48,
 			body: [
-				['Habitación:', checkin.habitacion || checkin.n_habitacion || '', 'Cliente:', checkin.nombre_factura || ''],
+				['Habitación:', '', 'Cliente:', checkin.nombre_factura || ''],
 				['Fecha ingreso:', checkin.fecha_ingreso, 'Fecha salida:', checkin.fecha_salida],
 				['Total:', checkin.total, 'Saldo:', checkin.saldo],
 			],
