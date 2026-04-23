@@ -251,6 +251,7 @@ export const masterDetail = async ({ query, body, user }, res) => {
 				rows
 			);
 
+			cabecera.forEach((el) => { el.label = ''; });
 			doc.addTable(cabecera, [objetoSuma], {
 				fontSize: 12,
 				border: {
@@ -820,6 +821,7 @@ export const getReporte = async ({ body, user }, res) => {
 					[rows.at(i)]
 				);
 
+				cabecera.forEach((el) => { el.label = ''; });
 				doc.addTable(cabecera, [objetoSuma], {
 					fontSize: 12,
 					border: {
