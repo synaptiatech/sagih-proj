@@ -352,7 +352,7 @@ tfoot tr:first-child{border-top:2px solid #000}
 		if (empresa?.nit) doc.text(`NIT: ${empresa.nit}`, 105, 24, { align: 'center' });
 		doc.text(new Date().toLocaleDateString('es-GT'), 195, 12, { align: 'right' });
 		doc.text(new Date().toLocaleTimeString('es-GT'), 195, 18, { align: 'right' });
-		if (authState?.data?.usuario) doc.text(authState.data.usuario, 195, 24, { align: 'right' });
+		doc.text(authState.data.usuario ?? '', 195, 24, { align: 'right' });
 
 		doc.setFontSize(14);
 		doc.setFont('helvetica', 'bold');
