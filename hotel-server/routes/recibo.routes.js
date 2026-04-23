@@ -7,12 +7,14 @@ import {
 	getAllRecibo,
 	getDetalleRecibo,
 	getRecibo,
+	getRecibosPorDocumento,
 	updateDetalleRecibo,
 	updateRecibo,
 } from '../controllers/recibo.controller.js';
 
 const router = Router();
 
+router.get('/porcheckin', getRecibosPorDocumento);
 router.get('/', getRecibo);
 router.post('/all', getAllRecibo);
 router.post('/', createRecibo);

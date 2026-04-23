@@ -2,6 +2,7 @@ import { tablesName } from '../consts/names.js';
 import {
 	bulkInsertQuery,
 	deleteQuery,
+	getFromQuery,
 	getOne,
 	getOneQueryMethod,
 	getQueryMethod,
@@ -37,10 +38,28 @@ export const getAllRecibo = async ({ query, body }, res) => {
 	}
 };
 
-// TODO: Completar implementación
-export const getRecibosPorDocumento = async ({ query, body }, res) => {
+export const getRecibosPorDocumento = async ({ query }, res) => {
 	try {
-		res.status(200).json([]);
+		const { serie, tipo_transaccion, documento } = query;
+		const results = await getFromQuery({
+			sql: `
+				SELECT
+					dr.codigo,
+					CONCAT(dr.tipo_transaccion, '-', dr.serie, '-', dr.documento) AS n_recibo,
+					TO_CHAR(dr.fecha, 'DD/MM/YYYY HH24:MI:SS') AS fecha,
+					tp.nombre AS tipo_pago,
+					dr.descripcion,
+					dr.monto
+				FROM detalle_recibo dr
+				INNER JOIN tipo_pago tp ON dr.tipo_pago = tp.codigo
+				WHERE dr.serie_fac = $1
+					AND dr.ti_tran_fac = $2
+					AND dr.documento_fac = $3
+				ORDER BY dr.fecha ASC
+			`,
+			values: [serie, tipo_transaccion, Number(documento)],
+		});
+		res.status(200).json(results);
 	} catch (error) {
 		errorHandler(res, error);
 	}

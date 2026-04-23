@@ -606,9 +606,9 @@ export const updateTransaccion = async ({ body }, res) => {
 			tablesName.TRAN_DETALLE,
 			{
 				habitacion: hab_tranDet[0].habitacion,
-				subtotal: hab_tranDet[0].precio,
+				subtotal: hab_tranDet[0].subtotal,
 				cantidad: hab_tranDet[0].cantidad,
-				precio: hab_tranDet[0].precio * hab_tranDet[0].cantidad,
+				precio: hab_tranDet[0].precio,
 			},
 			{
 				serie: tranCorrelativo.serie,

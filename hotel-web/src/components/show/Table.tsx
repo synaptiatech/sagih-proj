@@ -1,4 +1,4 @@
-import { Delete, Edit, Print, SecurityRounded } from '@mui/icons-material';
+import { Delete, Edit, Print, ReceiptLong, SecurityRounded } from '@mui/icons-material';
 import {
 	Box,
 	Card,
@@ -98,6 +98,7 @@ const MiTabla = ({
 	onDelete = undefined,
 	onDownload = undefined,
 	onEdit = undefined,
+	onPayments = undefined,
 }: MiTablaProps) => {
 	const headersKey: string[] = Object.keys(headers);
 	const headersValue: Object[] = Object.values(headers);
@@ -206,6 +207,17 @@ const MiTabla = ({
 														onDownload(row)
 													}>
 													<Print />
+												</IconButton>
+											</Tooltip>
+										)}
+										{onPayments && (
+											<Tooltip title='Ver pagos'>
+												<IconButton
+													color='primary'
+													onClick={() =>
+														onPayments(row)
+													}>
+													<ReceiptLong />
 												</IconButton>
 											</Tooltip>
 										)}

@@ -1139,29 +1139,32 @@ from encabezado_transaccion et
 -- Vista detalle_transacción
 -- -----------------------------------------------------
 drop view if exists v_tran_detalle ;
-create view v_tran_detalle as 
+create view v_tran_detalle as
 	select
-		dt.serie , dt.tipo_transaccion , dt.documento , 
-		concat(dt.tipo_transaccion, '-', dt.serie, '-', dt.documento) as codigo, 
-		to_char(dt.fecha , 'DD/MM/YYYY') as fecha, 
-		dt.descripcion , dt.habitacion , dt.servicio , 
-		dt.cantidad , 
-		'Q.' || to_char(dt.precio, '999G999D99') as precio , 
-		'Q.' || to_char(dt.subtotal, '999G999D99') as dt_subtotal , 
-		'Q.' || to_char(et.subtotal, '999G999D99') as et_subtotal , 
-		'Q.' || to_char(et.total, '999G999D99') as total , 
+		dt.serie , dt.tipo_transaccion , dt.documento ,
+		concat(dt.tipo_transaccion, '-', dt.serie, '-', dt.documento) as codigo,
+		to_char(dt.fecha, 'DD/MM/YYYY HH24:MI:SS') as fecha,
+		dt.descripcion , dt.habitacion , dt.servicio ,
+		s.nombre as n_servicio ,
+		dt.cantidad ,
+		'Q.' || to_char(dt.precio, '999G999D99') as precio ,
+		'Q.' || to_char(dt.subtotal, '999G999D99') as dt_subtotal ,
+		'Q.' || to_char(et.subtotal, '999G999D99') as et_subtotal ,
+		'Q.' || to_char(et.total, '999G999D99') as total ,
 		'Q.' || to_char(et.saldo, '999G999D99') as saldo ,
-		to_char(et.fecha_ingreso, 'DD/MM/YYYY') as fecha_ingreso , 
-		to_char(et.fecha_salida, 'DD/MM/YYYY') as fecha_salida , 
-		et.estado , et.numero_personas , 
+		to_char(et.fecha_ingreso, 'DD/MM/YYYY HH24:MI:SS') as fecha_ingreso ,
+		to_char(et.fecha_salida, 'DD/MM/YYYY HH24:MI:SS') as fecha_salida ,
+		et.estado , et.numero_personas ,
 		et.cliente , et.nombre_factura , et.vendedor , v.nombre as v_nombre
-	from detalle_transaccion dt 
-	inner join encabezado_transaccion et 
-		on dt.serie = et.serie 
-		and dt.tipo_transaccion = et.tipo_transaccion 
+	from detalle_transaccion dt
+	inner join encabezado_transaccion et
+		on dt.serie = et.serie
+		and dt.tipo_transaccion = et.tipo_transaccion
 		and dt.documento = et.documento
-	inner join vendedor v 
-		on et.vendedor = v.codigo ;
+	inner join vendedor v
+		on et.vendedor = v.codigo
+	inner join servicio s
+		on dt.servicio = s.codigo ;
 -- -----------------------------------------------------
 -- Vista encabezado_recibo
 -- -----------------------------------------------------

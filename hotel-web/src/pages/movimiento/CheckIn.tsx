@@ -13,6 +13,7 @@ import Loader from '../../components/layout/loader';
 import GridSkeleton from '../../components/layout/waiting';
 import Paginacion from '../../components/paginacion/Paginacion';
 import MiModal from '../../components/show/MiModal';
+import PagosPdf from '../../components/show/PagosPdf';
 import MiTabla from '../../components/show/Table';
 import { ToolbarOnlyRead } from '../../components/show/Toolbar';
 import { URI } from '../../consts/Uri';
@@ -39,6 +40,8 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 	const [state, dispatch] = useReducer(dataReducer, dataDefault);
 	const [openModal, setOpenModal] = useState(false);
 	const [loading, setLoading] = useState(false);
+	const [pagosData, setPagosData] = useState<{ checkin: any; pagos: any[] } | null>(null);
+	const [openPagosModal, setOpenPagosModal] = useState(false);
 
 	const { data, error, isLoading, refetch } = useFetch({
 		path: `${URI.transaccion}/all`,
@@ -170,7 +173,7 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 					documento: 'Documento',
 					codigo: 'Documento',
 					habitacion: 'Habitacion',
-					et_subtotal: 'Subtotal',
+					et_subtotal: 'Base sin IVA',
 					total: 'Total',
 					saldo: 'Saldo',
 					fecha_ingreso: 'Fecha ingreso',
@@ -180,7 +183,7 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 					v_nombre: 'Vendedor',
 					fecha: 'Fecha',
 					descripcion: 'Descripción',
-					servicio: 'Servicio',
+					n_servicio: 'Servicio',
 					cantidad: 'Cantidad',
 					precio: 'Precio',
 					dt_subtotal: 'Subtotal',
@@ -188,7 +191,7 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 				masterColumns: {
 					codigo: 'Documento',
 					habitacion: 'Habitacion',
-					et_subtotal: 'Subtotal',
+					et_subtotal: 'Base sin IVA',
 					total: 'Total',
 					saldo: 'Saldo',
 					fecha_ingreso: 'Fecha ingreso',
@@ -197,7 +200,7 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 				detailColumns: {
 					fecha: 'Fecha',
 					descripcion: 'Descripción',
-					servicio: 'Servicio',
+					n_servicio: 'Servicio',
 					cantidad: 'Cantidad',
 					precio: 'Precio',
 					dt_subtotal: 'Subtotal',
@@ -212,10 +215,31 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 					serie: checkin.serie,
 					documento: checkin.documento,
 				},
+				sumatoria: { dt_subtotal: 'Subtotal' },
 			});
 			downloadFileByBloodPart(data, 'CheckIn');
 		} catch (error) {
 			handleError('No se pudo descargar el archivo', error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const onPagos = async (checkin: any) => {
+		try {
+			setLoading(true);
+			const { data: pagos } = await dataGet({
+				path: `${URI.recibo}/porcheckin`,
+				params: {
+					serie: checkin.serie,
+					tipo_transaccion: checkin.tipo_transaccion,
+					documento: checkin.documento,
+				},
+			});
+			setPagosData({ checkin, pagos });
+			setOpenPagosModal(true);
+		} catch (error) {
+			handleError('No se pudieron cargar los pagos', error);
 		} finally {
 			setLoading(false);
 		}
@@ -271,6 +295,7 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 						onEdit={onEdit}
 						onDelete={onDelete}
 						onDownload={onDownloadOne}
+						onPayments={onPagos}
 					/>
 					<Paginacion
 						count={state.pages}
@@ -282,6 +307,11 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 			{loading && <Loader />}
 			<MiModal size='large' open={openModal} onClose={onClose}>
 				<FormReserva onClose={onClose} />
+			</MiModal>
+			<MiModal size='large' open={openPagosModal} onClose={() => setOpenPagosModal(false)}>
+				{pagosData && (
+					<PagosPdf checkin={pagosData.checkin} pagos={pagosData.pagos} />
+				)}
 			</MiModal>
 		</>
 	);

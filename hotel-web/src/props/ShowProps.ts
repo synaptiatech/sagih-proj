@@ -19,6 +19,7 @@ export interface MiTablaProps {
 	onDelete?: (row: Object, index: number) => void;
 	onEdit?: (row: Object, index: number) => void;
 	onDownload?: (row: Object) => void;
+	onPayments?: (row: Object) => void;
 }
 
 export interface TableProps {
