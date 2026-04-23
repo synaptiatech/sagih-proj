@@ -315,8 +315,9 @@ tfoot tr:first-child{border-top:2px solid #000}
 		w.document.close();
 	};
 
-	const handleDownloadPdf = () => {
+	const handleDownloadPdf = async () => {
 		if (!pagosData) return;
+		const { data: empresa } = await dataGet({ path: URI.empresa });
 		const { checkin, pagos } = pagosData;
 		const fmtQ = (n: number) =>
 			new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(n);
@@ -328,14 +329,14 @@ tfoot tr:first-child{border-top:2px solid #000}
 
 		doc.setFontSize(12);
 		doc.setFont('helvetica', 'bold');
-		doc.text(empresaData?.nombre || '', 105, 12, { align: 'center' });
+		if (empresa?.nombre) doc.text(empresa.nombre, 105, 12, { align: 'center' });
 		doc.setFont('helvetica', 'normal');
 		doc.setFontSize(9);
-		doc.text(empresaData?.direccion || '', 105, 18, { align: 'center' });
-		doc.text(`NIT: ${empresaData?.nit || ''}`, 105, 24, { align: 'center' });
+		if (empresa?.direccion) doc.text(empresa.direccion, 105, 18, { align: 'center' });
+		if (empresa?.nit) doc.text(`NIT: ${empresa.nit}`, 105, 24, { align: 'center' });
 		doc.text(new Date().toLocaleDateString('es-GT'), 195, 12, { align: 'right' });
 		doc.text(new Date().toLocaleTimeString('es-GT'), 195, 18, { align: 'right' });
-		doc.text(authState?.data?.usuario || '', 195, 24, { align: 'right' });
+		if (authState?.data?.usuario) doc.text(authState.data.usuario, 195, 24, { align: 'right' });
 
 		doc.setFontSize(14);
 		doc.setFont('helvetica', 'bold');
