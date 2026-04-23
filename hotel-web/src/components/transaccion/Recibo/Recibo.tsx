@@ -175,7 +175,43 @@ const Recibo: React.FC<ReciboProps> = ({ onlyRead = false }) => {
 		</>
 	);
 
-	if (onlyRead) return <SaldoxTotal />;
+	if (onlyRead)
+		return (
+			<>
+				<SaldoxTotal />
+				{state.rcDetalle.length > 0 && (
+					<table style={{ width: '100%', marginTop: 8, borderCollapse: 'collapse' }}>
+						<thead>
+							<tr style={{ borderBottom: '1px solid #ccc' }}>
+								<th style={{ textAlign: 'left', padding: '4px 8px' }}>Tipo pago</th>
+								<th style={{ textAlign: 'left', padding: '4px 8px' }}>Descripción</th>
+								<th style={{ textAlign: 'right', padding: '4px 8px' }}>Monto</th>
+								<th style={{ textAlign: 'right', padding: '4px 8px' }}>Fecha</th>
+							</tr>
+						</thead>
+						<tbody>
+							{state.rcDetalle.map((item, index) => (
+								<tr key={index} style={{ borderBottom: '1px solid #eee' }}>
+									<td style={{ padding: '4px 8px' }}>{item.n_tipo_pago || ''}</td>
+									<td style={{ padding: '4px 8px' }}>{item.descripcion}</td>
+									<td style={{ textAlign: 'right', padding: '4px 8px' }}>
+										{new Intl.NumberFormat('es-GT', {
+											style: 'currency',
+											currency: 'GTQ',
+										}).format(+`${item.monto}`.replace('Q', '').replace(',', ''))}
+									</td>
+									<td style={{ textAlign: 'right', padding: '4px 8px' }}>
+										{item.fecha
+											? new Date(item.fecha).toLocaleDateString('es-GT')
+											: ''}
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				)}
+			</>
+		);
 
 	return (
 		<>

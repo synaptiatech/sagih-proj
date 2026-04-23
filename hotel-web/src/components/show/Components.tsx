@@ -186,12 +186,15 @@ const DesRcPdf = ({ headers }: { headers: String[] }) => {
 			</thead>
 			<tbody>
 				<tr>
-					<th>{`${state.tranCorrelativo.tipo_transaccion || ''}-${
-						state.tranCorrelativo.serie || ''
-					}${state.tranCorrelativo.siguiente || ''}
-					`}</th>
-					<th>{new Date().toLocaleDateString()}</th>
-					<th>{new Date().toLocaleTimeString()}</th>
+					<th>{state.rcDetalle[0]
+						? `${state.rcDetalle[0].tipo_transaccion}-${state.rcDetalle[0].serie}${state.rcDetalle[0].documento}`
+						: ''}</th>
+					<th>{state.rcDetalle[0]?.fecha
+						? new Date(state.rcDetalle[0].fecha).toLocaleDateString('es-GT')
+						: ''}</th>
+					<th>{state.rcDetalle[0]?.fecha
+						? new Date(state.rcDetalle[0].fecha).toLocaleTimeString('es-GT')
+						: ''}</th>
 					{Object.values(groupByPayType()).map((value, index) => (
 						<th key={index}>
 							{new Intl.NumberFormat('es-GT', {

@@ -47,6 +47,7 @@ const RcPdf = () => {
 							<th align='left'>Documento</th>
 							<th align='right'>Fecha</th>
 							<th align='right'>Hora</th>
+							<th align='left'>Tipo pago</th>
 							<th align='left'>Descripción</th>
 							<th align='right'>Abono</th>
 						</tr>
@@ -56,11 +57,16 @@ const RcPdf = () => {
 							<tr key={index}>
 								<td align='left'>{`${item.tipo_transaccion}-${item.serie}${item.documento}`}</td>
 								<td align='right'>
-									{new Date().toLocaleDateString()}
+									{item.fecha
+										? new Date(item.fecha).toLocaleDateString('es-GT')
+										: ''}
 								</td>
 								<td align='right'>
-									{new Date().toLocaleTimeString()}
+									{item.fecha
+										? new Date(item.fecha).toLocaleTimeString('es-GT')
+										: ''}
 								</td>
+								<td align='left'>{item.n_tipo_pago || ''}</td>
 								<td align='left'>{item.descripcion}</td>
 								<td align='right'>
 									{new Intl.NumberFormat('es-GT', {
@@ -77,7 +83,7 @@ const RcPdf = () => {
 					</tbody>
 					<tfoot>
 						<tr className='border-y-4 border-black'>
-							<td colSpan={4} align='right'>
+							<td colSpan={5} align='right'>
 								<b>TOTAL:</b>
 							</td>
 							<td align='right'>
