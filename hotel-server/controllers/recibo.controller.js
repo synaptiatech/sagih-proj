@@ -128,7 +128,7 @@ export const createDetalleRecibo = async ({ body }, res) => {
 	try {
 		const payload = {
 			...body,
-			fecha: body.fecha || getGuatemalaTimestamp(),
+			fecha: getGuatemalaTimestamp(),
 		};
 
 		const results = await insertQuery(tablesName.RC_DETALLE, payload);

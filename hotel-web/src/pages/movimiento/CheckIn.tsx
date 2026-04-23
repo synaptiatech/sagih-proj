@@ -1,4 +1,4 @@
-import { Box } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import {
 	ChangeEvent,
 	useContext,
@@ -29,6 +29,7 @@ import {
 import { downloadFileByBloodPart } from '../../utils/DownloadFile';
 import { formatDateTime } from '../../utils/Formateo';
 import { handleError } from '../../utils/HandleError';
+import { PictureAsPdf, Print } from '@mui/icons-material';
 import swal from 'sweetalert';
 
 export type CheckInType = {
@@ -245,6 +246,55 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 		}
 	};
 
+	const handlePrintPagos = () => {
+		if (!pagosData) return;
+		const { checkin, pagos } = pagosData;
+		const totalPagado = pagos.reduce((acc, p) => acc + Number(p.monto), 0);
+		const totalCI = Number(`${checkin.total}`.replace('Q.', '').replace(/,/g, '').trim());
+		const saldoPendiente = totalCI - totalPagado;
+		const fmtQ = (n: number) =>
+			new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(n);
+		const rows = pagos
+			.map(
+				p =>
+					`<tr><td>${p.n_recibo}</td><td>${p.fecha}</td><td>${p.tipo_pago}</td><td>${p.descripcion}</td><td align="right">${fmtQ(Number(p.monto))}</td></tr>`
+			)
+			.join('');
+		const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
+<title>Pagos - ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}</title>
+<style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:6px 8px}thead tr{border-top:3px solid #000;border-bottom:3px solid #000}
+tfoot tr:first-child{border-top:2px solid #000}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}p{margin:2px 0}</style>
+</head><body>
+<h2>Estado de cuenta - Pagos realizados</h2>
+<h3>Check-In: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}</h3>
+<div class="g">
+<p>Documento: <strong>${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}</strong></p>
+<p>Habitación: <strong>${checkin.habitacion || ''}</strong></p>
+<p>Cliente: <strong>${checkin.nombre_factura || ''}</strong></p>
+<p>Fecha ingreso: <strong>${checkin.fecha_ingreso}</strong></p>
+<p>Fecha salida: <strong>${checkin.fecha_salida}</strong></p>
+<p>Total: <strong>${checkin.total}</strong></p>
+<p>Saldo: <strong>${checkin.saldo}</strong></p>
+</div>
+<table>
+<thead><tr><th align="left">N° Recibo</th><th align="left">Fecha/Hora</th><th align="left">Tipo pago</th><th align="left">Descripción</th><th align="right">Monto</th></tr></thead>
+<tbody>${rows || '<tr><td colspan="5" align="center">Sin pagos registrados</td></tr>'}</tbody>
+<tfoot>
+<tr><td colspan="4" align="right"><strong>TOTAL PAGADO:</strong></td><td align="right"><strong>${fmtQ(totalPagado)}</strong></td></tr>
+<tr><td colspan="4" align="right"><strong>SALDO PENDIENTE:</strong></td><td align="right"><strong>${fmtQ(saldoPendiente)}</strong></td></tr>
+</tfoot>
+</table>
+<script>window.onload=()=>window.print();</script>
+</body></html>`;
+		const w = window.open('', '_blank', 'width=800,height=600');
+		if (!w) return;
+		w.document.write(html);
+		w.document.close();
+	};
+
 	useEffect(() => {
 		if (data) {
 			const rows = (data.rows ?? []).map((row: any) => {
@@ -310,7 +360,17 @@ const CheckIn = ({ stateTran }: CheckInType) => {
 			</MiModal>
 			<MiModal size='large' open={openPagosModal} onClose={() => setOpenPagosModal(false)}>
 				{pagosData && (
-					<PagosPdf checkin={pagosData.checkin} pagos={pagosData.pagos} />
+					<>
+						<Box sx={{ display: 'flex', gap: 2, mb: 2, justifyContent: 'flex-end' }}>
+							<Button variant='outlined' startIcon={<Print />} onClick={handlePrintPagos}>
+								Imprimir
+							</Button>
+							<Button variant='contained' startIcon={<PictureAsPdf />} onClick={handlePrintPagos}>
+								Descargar PDF
+							</Button>
+						</Box>
+						<PagosPdf checkin={pagosData.checkin} pagos={pagosData.pagos} />
+					</>
 				)}
 			</MiModal>
 		</>

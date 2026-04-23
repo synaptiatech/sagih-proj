@@ -50,12 +50,12 @@ const TituloPdf = ({
 					alignItems: 'center',
 				}}>
 				<Box>
-					<img
+					{data.logo && <img
 						src={BASE_URL + data.logo}
 						alt='Logo'
 						width={128}
 						height={128}
-					/>
+					/>}
 				</Box>
 				<Box>
 					<Typography align='center' variant='h6'>
