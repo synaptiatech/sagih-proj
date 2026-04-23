@@ -19,6 +19,7 @@ type CheckInInfo = {
 	fecha_salida: string;
 	total: string;
 	saldo: string;
+	v_nombre?: string;
 };
 
 type PagosPdfProps = {
@@ -42,6 +43,7 @@ const PagosPdf = ({ checkin, pagos }: PagosPdfProps) => {
 				<TituloPdf
 					title='Estado de cuenta - Pagos realizados'
 					description={`Check-In: ${checkin.tipo_transaccion}-${checkin.serie}-${checkin.documento}`}
+					usuario={checkin.v_nombre ?? ''}
 				/>
 			</SeccionPdf>
 			<SeccionPdf>

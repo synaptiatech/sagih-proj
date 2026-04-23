@@ -412,6 +412,9 @@ tfoot tr:first-child{border-top:2px solid #000}
 				if (data.section === 'foot' && !data.cell.raw) {
 					data.cell.styles.lineWidth = 0;
 				}
+				if (data.section === 'foot' && data.column.index === 4) {
+					data.cell.styles.halign = 'right';
+				}
 			},
 		});
 

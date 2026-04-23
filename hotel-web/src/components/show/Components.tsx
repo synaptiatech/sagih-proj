@@ -23,9 +23,11 @@ const SeccionPdf = ({
 const TituloPdf = ({
 	title,
 	description,
+	usuario,
 }: {
 	title: string;
 	description: string;
+	usuario?: string;
 }) => {
 	const { state } = useContext(AuthContext);
 	const { data, isLoading, isError } = useFetch({
@@ -76,7 +78,7 @@ const TituloPdf = ({
 						{formatTime(new Date())}
 					</Typography>
 					<Typography align='right' variant='body2'>
-						{state.data.usuario}
+						{usuario ?? state.data.usuario}
 					</Typography>
 				</Box>
 			</Box>
