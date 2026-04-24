@@ -71,7 +71,7 @@ const Cliente = () => {
 					primera_visita:      58,
 					ultima_visita:       58,
 					total_visitas:       42,
-					str_total_consumido: 65,
+					str_total_consumido: 72,
 					noches_totales:      42,
 					str_ticket_promedio: 65,
 					dias_sin_visitar:    48,
