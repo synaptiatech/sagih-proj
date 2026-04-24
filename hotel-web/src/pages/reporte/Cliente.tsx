@@ -22,12 +22,20 @@ const Cliente = () => {
 	});
 	const [state, dispatch] = useReducer(reporteReducer, {
 		colsReporte: {
-			codigo: 'CODIGO',
-			nombre: 'NOMBRE',
-			nombre_c: 'NOMBRE COMERCIAL',
-			nit: 'NIT',
-			telefono_celular: 'TELEFONO',
-			str_saldo: 'SALDO',
+			codigo:              'CODIGO',
+			nombre:              'NOMBRE',
+			nombre_c:            'NOMBRE COMERCIAL',
+			nit:                 'NIT',
+			telefono_celular:    'TELEFONO',
+			str_saldo:           'SALDO',
+			primera_visita:      '1RA VISITA',
+			ultima_visita:       'ULT. VISITA',
+			total_visitas:       'VISITAS',
+			str_total_consumido: 'CONSUMIDO',
+			noches_totales:      'NOCHES',
+			str_ticket_promedio: 'TICKET PROM.',
+			dias_sin_visitar:    'DIAS S/VISITA',
+			categoria:           'CATEGORIA',
 		},
 		queryFiltro: [],
 		title: 'Reporte de clientes',
@@ -52,7 +60,7 @@ const Cliente = () => {
 						valor: q.valor,
 					}))
 					.filter((q: any) => q.valor !== ''),
-				sumatoria: { str_saldo: 'Saldo' },
+				sumatoria: { str_saldo: 'Saldo', str_total_consumido: 'Total consumido' },
 			});
 			downloadFileByBloodPart(data, 'Clientes');
 		} catch (error) {
