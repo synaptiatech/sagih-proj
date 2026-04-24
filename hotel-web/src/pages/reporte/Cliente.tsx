@@ -64,7 +64,7 @@ const Cliente = () => {
 				columnWidths: {
 					codigo:              35,
 					nombre:              95,
-					nombre_c:            85,
+					nombre_c:            75,
 					nit:                 55,
 					telefono_celular:    55,
 					str_saldo:           62,
@@ -73,9 +73,9 @@ const Cliente = () => {
 					total_visitas:       42,
 					str_total_consumido: 72,
 					noches_totales:      42,
-					str_ticket_promedio: 65,
+					str_ticket_promedio: 60,
 					dias_sin_visitar:    48,
-					categoria:           70,
+					categoria:           85,
 				},
 			});
 			downloadFileByBloodPart(data, 'Clientes');
