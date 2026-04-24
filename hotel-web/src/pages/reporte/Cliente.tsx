@@ -62,7 +62,7 @@ const Cliente = () => {
 					.filter((q: any) => q.valor !== ''),
 				sumatoria: { str_saldo: 'Saldo', str_total_consumido: 'Total consumido' },
 				columnWidths: {
-					codigo:              45,
+					codigo:              35,
 					nombre:              95,
 					nombre_c:            85,
 					nit:                 55,
@@ -75,7 +75,7 @@ const Cliente = () => {
 					noches_totales:      42,
 					str_ticket_promedio: 65,
 					dias_sin_visitar:    48,
-					categoria:           52,
+					categoria:           70,
 				},
 			});
 			downloadFileByBloodPart(data, 'Clientes');
