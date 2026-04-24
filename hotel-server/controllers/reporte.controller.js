@@ -1025,10 +1025,11 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 					size: 0,
 					color: '#fff',
 				},
-				...(Object.keys(columnWidths).length === 0 ? { width: 'fill_body' } : {}),
+				width: 'fill_body',
 				headBackground: '#ffffff',
 				headColor: '#ffffff',
 				cellsFont: 'Helvetica-Bold',
+				cellsAlign: 'right',
 			});
 		}
 
