@@ -173,7 +173,7 @@ const parseMoneyValue = (value) => {
  * Configurar la numeración de páginas
  * @param {PDFDocument} doc Documento actual
  */
-export const calcSumatoria = (columns, sumatoria, rows) => {
+export const calcSumatoria = (columns, sumatoria, rows, columnWidths = {}) => {
 	const objetoSuma = {};
 
 	Object.keys(columns).forEach((key) => {
@@ -187,17 +187,16 @@ export const calcSumatoria = (columns, sumatoria, rows) => {
 				currency: 'GTQ',
 			}).format(total);
 		} else {
-			objetoSuma[key] = '    ';
+			objetoSuma[key] = '';
 		}
 	});
 
-	const cabecera = Object.entries(columns).map(([key, label]) => {
-		return {
-			key,
-			label,
-			align: 'right',
-		};
-	});
+	const cabecera = Object.entries(columns).map(([key, label]) => ({
+		key,
+		label,
+		align: 'right',
+		...(columnWidths[key] ? { width: columnWidths[key] } : {}),
+	}));
 
 	console.log({ cabecera, objetoSuma });
 	return { cabecera, objetoSuma };
@@ -249,7 +248,9 @@ export const getCellsAlign = (key, value = '') => {
 		key.includes('habitacion') ||
 		key.includes('h_nombre') ||
 		key.includes('numero_personas') ||
-		key.includes('abono')
+		key.includes('abono') ||
+		key.includes('promedio') ||
+		key.includes('dias')
 	) {
 		return 'right';
 	}

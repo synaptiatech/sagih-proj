@@ -1015,7 +1015,8 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 			const { cabecera, objetoSuma } = calcSumatoria(
 				columns,
 				body.sumatoria,
-				rows
+				rows,
+				columnWidths
 			);
 
 			doc.addTable(cabecera, [objetoSuma], {
