@@ -893,7 +893,10 @@ const obtenerValores = (querys) => {
 const obtenerDescripcionReporte = (querys) => {
 	return querys
 		.filter((item) => item.valor !== '')
-		.map((item) => `${item.columna} ${item.relacion} ${item.valor}`)
+		.map((item) => {
+			const rel = item.relacion === '~~*' ? 'contiene' : item.relacion;
+			return `${item.columna} ${rel} ${item.valor}`;
+		})
 		.join(' y ');
 };
 
@@ -991,13 +994,13 @@ export const getReporteParametrizado = async ({ body, query, user }, res) => {
 
 		await setupLetterhead(doc, user.usuario, title, criterio);
 
-		const detailHeaders = Object.entries(columns).map(([key, label]) => {
-			return {
-				key,
-				label,
-				align: getCellsAlign(key),
-			};
-		});
+		const columnWidths = body.columnWidths || {};
+		const detailHeaders = Object.entries(columns).map(([key, label]) => ({
+			key,
+			label,
+			align: getCellsAlign(key),
+			...(columnWidths[key] ? { width: columnWidths[key] } : {}),
+		}));
 
 		doc.addTable(detailHeaders, rows, {
 			fontSize: 12,

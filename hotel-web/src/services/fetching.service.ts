@@ -90,6 +90,7 @@ export interface DownloadFileProps {
 	where?: Record<string, any>;
 	sort?: Record<string, 'ASC' | 'DESC'>;
 	sumatoria?: Record<string, any>;
+	columnWidths?: Record<string, number>;
 }
 
 /**
@@ -106,6 +107,7 @@ export const downloadFile = async ({
 	where = {},
 	sort = {},
 	sumatoria = {},
+	columnWidths = undefined,
 }: DownloadFileProps) => {
 	try {
 		const response = await api.post(
@@ -119,6 +121,7 @@ export const downloadFile = async ({
 				detailColumns,
 				customWhere,
 				sumatoria,
+				columnWidths,
 			},
 			{
 				responseType: 'arraybuffer',
