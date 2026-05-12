@@ -555,6 +555,13 @@ export const updateTransaccion = async ({ body }, res) => {
 			operacion,
 		} = body;
 
+		if (!tranEncabezado.cliente) {
+			return res.status(400).json({
+				message:
+					'Debe seleccionar o registrar un cliente antes de actualizar la transacción.',
+			});
+		}
+
 		const tranEnc = {
 			fecha_salida: formatearFecha(
 				tranEncabezado.fecha_salida,
@@ -567,6 +574,8 @@ export const updateTransaccion = async ({ body }, res) => {
 			cliente: tranEncabezado.cliente,
 			vendedor: tranEncabezado.vendedor,
 		};
+
+		if (!tranEnc.vendedor) delete tranEnc.vendedor;
 		const tranDet = completarTranDet(
 			tranCorrelativo,
 			habitacion,

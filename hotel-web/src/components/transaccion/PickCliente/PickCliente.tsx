@@ -1,5 +1,5 @@
 import { Autocomplete, IconButton, TextField, Typography } from '@mui/material';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { URI } from '../../../consts/Uri';
 import { useFetch } from '../../../hooks/useFetch';
 import { ClienteType } from '../../../props/ClienteProps';
@@ -19,6 +19,7 @@ const PickCliente: React.FC<PickClienteProps> = ({ readOnly = false }) => {
 	const { state, dispatch } = useContext(TransactContext);
 	const [cliente, setCliente] = useState({} as ClienteType);
 	const [openModal, setOpenModal] = useState(false);
+	const initialClienteCode = useRef(state.tranEncabezado.cliente);
 
 	const {
 		data: clientes,
@@ -78,7 +79,7 @@ const PickCliente: React.FC<PickClienteProps> = ({ readOnly = false }) => {
 	useEffect(() => {
 		if (clientes?.rows?.length > 0) {
 			clientes.rows.find((item: ClienteType) => {
-				if (item.codigo === state.tranEncabezado.cliente) {
+				if (item.codigo === initialClienteCode.current) {
 					setCliente(item);
 					return true;
 				}
@@ -88,6 +89,7 @@ const PickCliente: React.FC<PickClienteProps> = ({ readOnly = false }) => {
 	}, [clientes]);
 
 	useEffect(() => {
+		if (cliente.codigo === undefined) return;
 		dispatch({
 			type: transactTypes.SET_CLIENTE,
 			payload: {
